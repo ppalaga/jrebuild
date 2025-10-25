@@ -26,3 +26,5 @@ nb-configuration.xml
 
 # OSX
 .DS_Store
+
+/core/src/test/projects/test-project/build.log
