@@ -15,4 +15,10 @@ public record ArtifactDependencyTree(
     public int compareTo(ArtifactDependencyTree o) {
         return Gavtcs.groupFirstComparator().compare(rootGavtcs, o.rootGavtcs);
     }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        rootNode.accept(new DependencyGraphDumper(sb::append));
+        return sb.toString();
+    }
 }

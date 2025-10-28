@@ -6,11 +6,16 @@ package org.l2x6.jrebuild.core.dep;
 
 import eu.maveniverse.maven.mima.context.Context;
 import java.util.stream.Stream;
+import org.eclipse.aether.DefaultRepositorySystemSession;
+import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.collection.CollectRequest;
+import org.eclipse.aether.collection.DependencyCollectionException;
+import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.graph.DependencyNode;
-import org.eclipse.aether.resolution.DependencyRequest;
-import org.eclipse.aether.resolution.DependencyResolutionException;
+import org.eclipse.aether.util.graph.selector.AndDependencySelector;
+import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
+import org.eclipse.aether.util.graph.selector.ScopeDependencySelector;
 
 public class DependencyCollector {
 
@@ -23,20 +28,23 @@ public class DependencyCollector {
 
                     org.eclipse.aether.graph.Dependency dependency = new org.eclipse.aether.graph.Dependency(rootArtifact,
                             "runtime");
-                    CollectRequest collectRequest = new CollectRequest();
-                    collectRequest.setRoot(dependency);
-                    collectRequest.setRepositories(context.remoteRepositories());
+                    CollectRequest collectRequest = new CollectRequest(dependency, context.remoteRepositories());
 
-                    DependencyRequest dependencyRequest = new DependencyRequest();
-                    dependencyRequest.setCollectRequest(collectRequest);
+                    RepositorySystemSession repoSession = context.repositorySystemSession();
+                    if (request.includeOptionalDependencies()) {
+                        repoSession = new DefaultRepositorySystemSession(repoSession);
+                        ((DefaultRepositorySystemSession) repoSession).setDependencySelector(new AndDependencySelector(
+                                new ScopeDependencySelector("test", "provided"),
+                                new ExclusionDependencySelector()));
+                    }
 
                     try {
                         final DependencyNode rootNode = context.repositorySystem()
-                                .resolveDependencies(context.repositorySystemSession(), dependencyRequest)
+                                .collectDependencies(repoSession, collectRequest)
                                 .getRoot();
 
                         return new ArtifactDependencyTree(rootGavtcs, rootNode);
-                    } catch (DependencyResolutionException e) {
+                    } catch (DependencyCollectionException e) {
                         throw new RuntimeException("Could not resolve " + rootGavtcs);
                     }
                 });

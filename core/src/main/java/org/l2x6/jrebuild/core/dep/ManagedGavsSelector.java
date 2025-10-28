@@ -8,6 +8,7 @@ import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.extensions.mmr.MavenModelReader;
 import eu.maveniverse.maven.mima.extensions.mmr.ModelRequest;
 import eu.maveniverse.maven.mima.extensions.mmr.ModelResponse;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,23 +17,43 @@ import java.util.stream.Collectors;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.Model;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.VersionResolutionException;
+import org.l2x6.jrebuild.core.source.tree.SourceTreeArtifactLocator;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtcs;
 import org.l2x6.pom.tuner.model.GavtcsSet;
 
 public class ManagedGavsSelector {
 
-    public static Set<Gavtcs> select(Context context, Gav bom, GavtcsSet filters) {
+    private final SourceTreeArtifactLocator sourceTreeArtifactLocator;
+
+    public ManagedGavsSelector(SourceTreeArtifactLocator sourceTreeArtifactLocator) {
+        super();
+        this.sourceTreeArtifactLocator = sourceTreeArtifactLocator;
+    }
+
+    public Set<Gavtcs> select(Context context, Gav bom, GavtcsSet filters) {
         final MavenModelReader mmr = new MavenModelReader(context);
         try {
+
+            Path sourceTreeArtifactPath = sourceTreeArtifactLocator.findArtifact(
+                    new Gavtcs(bom.getGroupId(), bom.getArtifactId(), bom.getVersion(), "pom", null, null));
+            Artifact artifact = new DefaultArtifact(
+                    bom.getGroupId(),
+                    bom.getArtifactId(),
+                    "",
+                    "pom",
+                    bom.getVersion(),
+                    null,
+                    sourceTreeArtifactPath == null ? null : sourceTreeArtifactPath.toFile());
             final ModelResponse response = mmr.readModel(
                     ModelRequest.builder()
                             .setArtifact(
-                                    new DefaultArtifact(bom.getGroupId(), bom.getArtifactId(), "pom", bom.getVersion()))
+                                    artifact)
                             .build());
             Model model = response.getEffectiveModel();
 

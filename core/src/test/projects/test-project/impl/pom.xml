@@ -9,21 +9,21 @@
     <parent>
         <groupId>org.l2x6.jrebuild.test-project</groupId>
         <artifactId>jrebuild-test-project</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.0.1</version>
     </parent>
-    <artifactId>jrebuild-test-impl1</artifactId>
+    <artifactId>jrebuild-test-impl</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>org.l2x6.jrebuild.test-project</groupId>
             <artifactId>jrebuild-test-api</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>0.0.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.l2x6.jrebuild.test-project</groupId>
-            <artifactId>jrebuild-test-impl2</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <artifactId>jrebuild-test-optional</artifactId>
+            <version>0.0.1</version>
             <optional>true</optional>
         </dependency>
     </dependencies>
