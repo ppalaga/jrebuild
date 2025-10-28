@@ -5,7 +5,10 @@
 package org.l2x6.jrebuild.core.dep;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtcs;
 
@@ -14,5 +17,51 @@ public record DependencyCollectorRequest(
         Path projectDirectory,
         Gav rootBom,
         Collection<Gavtcs> rootArtifacts,
-        Collection<Gav> additionalBoms) {
+        Collection<Gav> additionalBoms,
+        boolean includeOptionalDependencies) {
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Path projectDirectory;
+        private Gav rootBom;
+        private List<Gavtcs> rootArtifacts = new ArrayList<>();
+        private List<Gav> additionalBoms = new ArrayList<>();
+        private boolean includeOptionalDependencies = false;
+
+        public Builder projectDirectory(Path projectDirectory) {
+            this.projectDirectory = projectDirectory;
+            return this;
+        }
+
+        public Builder rootBom(Gav rootBom) {
+            this.rootBom = rootBom;
+            return this;
+        }
+
+        public Builder rootArtifacts(Collection<Gavtcs> rootArtifacts) {
+            this.rootArtifacts.addAll(rootArtifacts);
+            return this;
+        }
+
+        public Builder includeOptionalDependencies(boolean includeOptionalDependencies) {
+            this.includeOptionalDependencies = includeOptionalDependencies;
+            return this;
+        }
+
+        public Builder additionalBoms(Collection<Gav> additionalBoms) {
+            this.additionalBoms.addAll(additionalBoms);
+            return this;
+        }
+
+        public DependencyCollectorRequest build() {
+            Collection<Gavtcs> rArtifs = Collections.unmodifiableList(rootArtifacts);
+            rootArtifacts = null;
+            Collection<Gav> aBoms = Collections.unmodifiableList(additionalBoms);
+            additionalBoms = null;
+            return new DependencyCollectorRequest(projectDirectory, rootBom, rArtifs, aBoms, includeOptionalDependencies);
+        }
+    }
 }

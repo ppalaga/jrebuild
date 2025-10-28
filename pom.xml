@@ -264,10 +264,7 @@
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
                         <systemPropertyVariables>
-                            <basedir>${project.build.directory}</basedir>
-                            <project.version>${project.version}</project.version>
-                            <project.build.sourceEncoding>${project.build.sourceEncoding}</project.build.sourceEncoding>
-                            <org.slf4j.simpleLogger.showDateTime>true</org.slf4j.simpleLogger.showDateTime>
+                            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>

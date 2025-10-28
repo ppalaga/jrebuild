@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.Model;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
@@ -29,10 +30,17 @@ public class ManagedGavsSelector {
     public static Set<Gavtcs> select(Context context, Gav bom, GavtcsSet filters) {
         final MavenModelReader mmr = new MavenModelReader(context);
         try {
+
+            Artifact artifact = new DefaultArtifact(
+                    bom.getGroupId(),
+                    bom.getArtifactId(),
+                    "",
+                    "pom",
+                    bom.getVersion());
             final ModelResponse response = mmr.readModel(
                     ModelRequest.builder()
                             .setArtifact(
-                                    new DefaultArtifact(bom.getGroupId(), bom.getArtifactId(), "pom", bom.getVersion()))
+                                    artifact)
                             .build());
             Model model = response.getEffectiveModel();
 
