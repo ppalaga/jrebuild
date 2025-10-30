@@ -4,6 +4,14 @@
  */
 package org.l2x6.jrebuild.core.scm;
 
-public class ScmRepository {
+public record ScmRepository(
+        String type,
+        String uri) {
+    public static ScmRepository UNKNOWN = new ScmRepository("git", "<unknown>");
+
+    @Override
+    public String toString() {
+        return uri;
+    }
 
 }

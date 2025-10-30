@@ -7,6 +7,7 @@ package org.l2x6.jrebuild.core.dep;
 import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.context.Runtime;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,7 +15,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.core.mima.JRebuildRuntime;
 import org.l2x6.pom.tuner.model.Gav;
-import org.l2x6.pom.tuner.model.Gavtcs;
+import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.GavtcsSet;
 
 public class ManagedGavsSelectorTest {
@@ -53,7 +54,8 @@ public class ManagedGavsSelectorTest {
     }
 
     static void assertGavSet(Context context, Gav bom, GavtcsSet gavtcsSet, String... expected) {
-        Set<Gavtcs> result = ManagedGavsSelector.select(context, bom, gavtcsSet);
-        Assertions.assertThat(result).isEqualTo(Stream.of(expected).map(Gavtcs::of).collect(Collectors.toSet()));
+        Set<Gavtc> result = ManagedGavsSelector.select(context, bom, gavtcsSet);
+        Assertions.assertThat(result).isEqualTo(
+                Stream.of(expected).map(Gavtc::of).collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
     }
 }

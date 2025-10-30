@@ -13,4 +13,10 @@
     </parent>
     <artifactId>jrebuild-test-transitive</artifactId>
 
+    <scm>
+        <connection>scm:git:https://github.com/l2x6/jrebuild-test-transitive</connection>
+        <developerConnection>scm:git:https://github.com/l2x6/jrebuild-test-transitive.git</developerConnection>
+        <url>https://github.com/l2x6/jrebuild-test-transitive</url>
+        <tag>0.0.1</tag>
+    </scm>
 </project>

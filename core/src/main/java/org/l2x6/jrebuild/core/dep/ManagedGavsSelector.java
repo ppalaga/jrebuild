@@ -22,12 +22,12 @@ import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.VersionResolutionException;
 import org.l2x6.pom.tuner.model.Gav;
-import org.l2x6.pom.tuner.model.Gavtcs;
+import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.GavtcsSet;
 
 public class ManagedGavsSelector {
 
-    public static Set<Gavtcs> select(Context context, Gav bom, GavtcsSet filters) {
+    public static Set<Gavtc> select(Context context, Gav bom, GavtcsSet filters) {
         final MavenModelReader mmr = new MavenModelReader(context);
         try {
 
@@ -49,9 +49,9 @@ public class ManagedGavsSelector {
                 final List<Dependency> deps = dependencyManagement.getDependencies();
                 if (deps != null && !deps.isEmpty()) {
                     return Collections.unmodifiableSet(deps.stream()
-                            .map(JrebuildUtils::toGavtcs)
+                            .map(JrebuildUtils::toGavtc)
                             .filter(filters::contains)
-                            .collect(Collectors.<Gavtcs, Set<Gavtcs>> toCollection(LinkedHashSet::new)));
+                            .collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
                 }
             }
         } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {

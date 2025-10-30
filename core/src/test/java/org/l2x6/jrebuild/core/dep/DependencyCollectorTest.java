@@ -14,6 +14,7 @@ import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
+import org.l2x6.jrebuild.core.tree.PrintVisitor;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.GavtcsSet;
 
@@ -26,17 +27,17 @@ public class DependencyCollectorTest {
                 "",
                 b -> b.includeOptionalDependencies(true),
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1
+                        org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:jar:0.0.1
-                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:jar:0.0.1 (optional)
-                           `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:jar:0.0.1 (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1:jar
+                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:0.0.1:jar
+                           `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:0.0.1:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:jar:0.0.1
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:jar:0.0.1 (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:0.0.1:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:0.0.1:jar
                         """);
 
     }
@@ -48,16 +49,16 @@ public class DependencyCollectorTest {
                 c -> {
                 },
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1
+                        org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:jar:0.0.1
-                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:jar:0.0.1 (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1:jar
+                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:0.0.1:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:jar:0.0.1
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:jar:0.0.1 (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:0.0.1:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:0.0.1:jar
                         """);
 
     }
@@ -68,16 +69,16 @@ public class DependencyCollectorTest {
                 "-SNAPSHOT",
                 c -> c.projectDirectory(Path.of("target/projects/test-project")),
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1-SNAPSHOT
+                        org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1-SNAPSHOT:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:jar:0.0.1-SNAPSHOT
-                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:jar:0.0.1-SNAPSHOT
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:jar:0.0.1-SNAPSHOT (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1-SNAPSHOT:jar
+                        +- org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1-SNAPSHOT:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-optional:0.0.1-SNAPSHOT:jar
                         """,
                 """
-                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:jar:0.0.1-SNAPSHOT
-                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:jar:0.0.1-SNAPSHOT (optional)
+                        org.l2x6.jrebuild.test-project:jrebuild-test-imported:0.0.1-SNAPSHOT:jar
+                        `- org.l2x6.jrebuild.test-project:jrebuild-test-transitive:0.0.1-SNAPSHOT:jar
                         """);
 
     }
@@ -101,8 +102,8 @@ public class DependencyCollectorTest {
             DependencyCollectorRequest re = builder.build();
             List<String> trees = DependencyCollector.collect(context, re)
                     .sorted()
-                    .map(ArtifactDependencyTree::toString)
-                    .peek(log::info)
+                    .map(PrintVisitor::toString)
+                    .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());
             Assertions.assertThat(trees).containsExactly(expected);
         }

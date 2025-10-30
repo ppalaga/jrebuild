@@ -22,5 +22,11 @@
         <module>imported</module>
         <module>transitive</module>
     </modules>
+    <scm>
+        <connection>scm:git:https://github.com/l2x6/jrebuild-test</connection>
+        <developerConnection>scm:git:https://github.com/l2x6/jrebuild-test.git</developerConnection>
+        <url>https://github.com/l2x6/jrebuild-test</url>
+        <tag>0.0.1</tag>
+    </scm>
 
 </project>

@@ -18,12 +18,12 @@ import org.eclipse.aether.util.graph.selector.ScopeDependencySelector;
 
 public class DependencyCollector {
 
-    public static Stream<ArtifactDependencyTree> collect(Context context, DependencyCollectorRequest request) {
+    public static Stream<ResolvedArtifact> collect(Context context, DependencyCollectorRequest request) {
 
         return request.rootArtifacts().parallelStream()
-                .map(rootGavtcs -> {
+                .map(rootGavtc -> {
 
-                    final Artifact rootArtifact = JrebuildUtils.toAetherArtifact(rootGavtcs);
+                    final Artifact rootArtifact = JrebuildUtils.toAetherArtifact(rootGavtc);
 
                     org.eclipse.aether.graph.Dependency dependency = new org.eclipse.aether.graph.Dependency(rootArtifact,
                             "runtime");
@@ -42,9 +42,9 @@ public class DependencyCollector {
                                 .collectDependencies(repoSession, collectRequest)
                                 .getRoot();
 
-                        return new ArtifactDependencyTree(rootGavtcs, rootNode);
+                        return new ResolvedArtifact(rootGavtc, rootNode);
                     } catch (DependencyCollectionException e) {
-                        throw new RuntimeException("Could not resolve " + rootGavtcs);
+                        throw new RuntimeException("Could not resolve " + rootGavtc);
                     }
                 });
     }

@@ -61,7 +61,7 @@
         <junit.version>5.13.4</junit.version>
         <maven.version>3.9.11</maven.version>
         <mima.version>2.4.35</mima.version>
-        <pom-tuner.version>4.7.0</pom-tuner.version>
+        <pom-tuner.version>4.7.2-SNAPSHOT</pom-tuner.version>
         <resolver.version>1.9.24</resolver.version>
         <quarkus.version>3.28.5</quarkus.version>
 
