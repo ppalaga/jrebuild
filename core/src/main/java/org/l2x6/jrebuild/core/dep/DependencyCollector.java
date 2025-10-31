@@ -12,6 +12,7 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.DependencyNode;
+import org.eclipse.aether.graph.DependencyVisitor;
 import org.eclipse.aether.util.graph.selector.AndDependencySelector;
 import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
 import org.eclipse.aether.util.graph.selector.ScopeDependencySelector;
@@ -47,6 +48,22 @@ public class DependencyCollector {
                         throw new RuntimeException("Could not resolve " + rootGavtc);
                     }
                 });
+    }
+
+    static class ParentAndImportVisitor implements DependencyVisitor {
+        
+        private final Map<Gav, >
+
+        @Override
+        public boolean visitEnter(DependencyNode node) {
+            return true;
+        }
+
+        @Override
+        public boolean visitLeave(DependencyNode node) {
+            return true;
+        }
+
     }
 
 }
