@@ -14,6 +14,7 @@ import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
+import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader;
 import org.l2x6.jrebuild.core.tree.PrintVisitor;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.GavtcsSet;
@@ -94,10 +95,10 @@ public class DependencyCollectorTest {
 
             Builder builder = DependencyCollectorRequest.builder()
                     .rootArtifacts(
-                            ManagedGavsSelector.select(
-                                    context,
-                                    bom,
-                                    GavtcsSet.builder().include("org.l2x6.jrebuild.test-project:*").build()));
+                            new ManagedGavsSelector(
+                                    context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel).select(
+                                            bom,
+                                            GavtcsSet.builder().include("org.l2x6.jrebuild.test-project:*").build()));
             customizeRequestBuilder.accept(builder);
             DependencyCollectorRequest re = builder.build();
             List<String> trees = DependencyCollector.collect(context, re)

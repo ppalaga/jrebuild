@@ -6,22 +6,28 @@ package org.l2x6.jrebuild.core.mima;
 
 import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.context.ContextOverrides;
+import eu.maveniverse.maven.mima.context.Lookup;
 import eu.maveniverse.maven.mima.context.Runtime;
 import eu.maveniverse.maven.mima.context.Runtimes;
+import eu.maveniverse.maven.mima.context.internal.IteratingLookup;
 import eu.maveniverse.maven.mima.context.internal.RuntimeSupport;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.repository.WorkspaceReader;
 import org.eclipse.aether.repository.WorkspaceRepository;
+import org.l2x6.jrebuild.core.mima.internal.JRebuildLookup;
 import org.l2x6.pom.tuner.MavenSourceTree;
 import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Module;
@@ -56,28 +62,41 @@ public class JRebuildRuntime implements Runtime {
     }
 
     public Context create(ContextOverrides overrides) {
-        Path basedir = overrides.getBasedirOverride();
-        if (basedir == null) {
-            return delegate.create(overrides);
-        } else {
-            final Context ctx = delegate.create(overrides);
-            final DefaultRepositorySystemSession session = new DefaultRepositorySystemSession(ctx.repositorySystemSession());
+        return create(overrides, s -> {
+        });
+    }
+
+    public Context create(ContextOverrides overrides, Consumer<DefaultRepositorySystemSession> sessionCustomizer) {
+        final Context ctx = delegate.create(overrides);
+        final Path basedir = overrides.getBasedirOverride();
+
+        final DefaultRepositorySystemSession session = new DefaultRepositorySystemSession(ctx.repositorySystemSession());
+        if (basedir != null) {
             final HashSet<String> profiles = new HashSet<String>(overrides.getActiveProfileIds());
             session.setWorkspaceReader(new JRebuildWorkspace(basedir, profiles::contains));
-            session.setReadOnly();
-            return new Context(
-                    delegate,
-                    overrides,
-                    ctx.basedir(),
-                    ctx.mavenUserHome(),
-                    ctx.mavenSystemHome(),
-                    ctx.repositorySystem(),
-                    session,
-                    ctx.remoteRepositories(),
-                    ctx.httpProxy(),
-                    ctx.lookup(),
-                    ctx.repositorySystem()::shutdown);
         }
+        sessionCustomizer.accept(session);
+        session.setReadOnly();
+
+        List<Lookup> lookups = new ArrayList<>();
+        AtomicReference<Context> lazyContext = new AtomicReference<>();
+        lookups.add(new JRebuildLookup(lazyContext::get));
+        lookups.add(ctx.lookup());
+        final Lookup lookup = new IteratingLookup(lookups);
+        Context result = new Context(
+                delegate,
+                overrides,
+                ctx.basedir(),
+                ctx.mavenUserHome(),
+                ctx.mavenSystemHome(),
+                ctx.repositorySystem(),
+                session,
+                ctx.remoteRepositories(),
+                ctx.httpProxy(),
+                lookup,
+                ctx.repositorySystem()::shutdown);
+        lazyContext.set(result);
+        return result;
     }
 
     static class JRebuildWorkspace implements WorkspaceReader {
@@ -172,7 +191,7 @@ public class JRebuildRuntime implements Runtime {
         }
     }
 
-    public static Runtime getInstance() {
+    public static JRebuildRuntime getInstance() {
         return new JRebuildRuntime((RuntimeSupport) Runtimes.INSTANCE.getRuntime());
     }
 

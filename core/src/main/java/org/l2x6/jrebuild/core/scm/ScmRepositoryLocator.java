@@ -4,10 +4,6 @@
  */
 package org.l2x6.jrebuild.core.scm;
 
-import eu.maveniverse.maven.mima.context.Context;
-import eu.maveniverse.maven.mima.extensions.mmr.MavenModelReader;
-import eu.maveniverse.maven.mima.extensions.mmr.ModelRequest;
-import eu.maveniverse.maven.mima.extensions.mmr.ModelResponse;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,13 +13,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
-import org.eclipse.aether.resolution.ArtifactDescriptorException;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.VersionResolutionException;
-import org.l2x6.jrebuild.core.dep.JrebuildUtils;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifact;
 import org.l2x6.jrebuild.core.tree.Node;
 import org.l2x6.jrebuild.core.tree.Visitor;
@@ -33,11 +26,11 @@ import org.l2x6.pom.tuner.model.Gavtc;
 public class ScmRepositoryLocator {
 
     private final Map<Gav, ScmRef> cachedScmInfos = new ConcurrentHashMap<>();
-    private final MavenModelReader mavenModelReader;
+    private final Function<Gav, Model> getEffectiveModel;
 
-    public ScmRepositoryLocator(Context context) {
+    public ScmRepositoryLocator(Function<Gav, Model> getEffectiveModel) {
         super();
-        this.mavenModelReader = new MavenModelReader(context);
+        this.getEffectiveModel = getEffectiveModel;
     }
 
     public ScmRepositoryLocatorVisitor newVisitor() {
@@ -89,17 +82,8 @@ public class ScmRepositoryLocator {
         }
 
         private ScmRef findScmRef(Gav gav, ResolvedArtifact node) {
-            try {
-                final ModelResponse response = mavenModelReader.readModel(
-                        ModelRequest.builder()
-                                .setArtifact(JrebuildUtils.toAetherArtifactPom(gav))
-                                .build());
-                Model model = response.getEffectiveModel();
-
-                return findScmRef(gav, model, gav.getVersion());
-            } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
-                throw new RuntimeException("Could not create effective model of " + gav, e);
-            }
+            final Model model = getEffectiveModel.apply(gav);
+            return findScmRef(gav, model, gav.getVersion());
         }
 
         /**

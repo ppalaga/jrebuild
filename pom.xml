@@ -161,6 +161,11 @@
                 <version>${resolver.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-util</artifactId>
+                <version>${resolver.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.l2x6.pom-tuner</groupId>
                 <artifactId>pom-tuner</artifactId>
                 <version>${pom-tuner.version}</version>

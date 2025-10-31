@@ -4,58 +4,40 @@
  */
 package org.l2x6.jrebuild.core.dep;
 
-import eu.maveniverse.maven.mima.context.Context;
-import eu.maveniverse.maven.mima.extensions.mmr.MavenModelReader;
-import eu.maveniverse.maven.mima.extensions.mmr.ModelRequest;
-import eu.maveniverse.maven.mima.extensions.mmr.ModelResponse;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.Model;
-import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.resolution.ArtifactDescriptorException;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.VersionResolutionException;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.GavtcsSet;
 
 public class ManagedGavsSelector {
+    private final Function<Gav, Model> getEffectiveModel;
 
-    public static Set<Gavtc> select(Context context, Gav bom, GavtcsSet filters) {
-        final MavenModelReader mmr = new MavenModelReader(context);
-        try {
+    public ManagedGavsSelector(Function<Gav, Model> getEffectiveModel) {
+        super();
+        this.getEffectiveModel = getEffectiveModel;
+    }
 
-            Artifact artifact = new DefaultArtifact(
-                    bom.getGroupId(),
-                    bom.getArtifactId(),
-                    "",
-                    "pom",
-                    bom.getVersion());
-            final ModelResponse response = mmr.readModel(
-                    ModelRequest.builder()
-                            .setArtifact(
-                                    artifact)
-                            .build());
-            Model model = response.getEffectiveModel();
+    public Set<Gavtc> select(Gav bom, GavtcsSet filters) {
 
-            final DependencyManagement dependencyManagement = model.getDependencyManagement();
-            if (dependencyManagement != null) {
-                final List<Dependency> deps = dependencyManagement.getDependencies();
-                if (deps != null && !deps.isEmpty()) {
-                    return Collections.unmodifiableSet(deps.stream()
-                            .map(JrebuildUtils::toGavtc)
-                            .filter(filters::contains)
-                            .collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
-                }
+        final Model model = getEffectiveModel.apply(bom);
+
+        final DependencyManagement dependencyManagement = model.getDependencyManagement();
+        if (dependencyManagement != null) {
+            final List<Dependency> deps = dependencyManagement.getDependencies();
+            if (deps != null && !deps.isEmpty()) {
+                return Collections.unmodifiableSet(deps.stream()
+                        .map(JrebuildUtils::toGavtc)
+                        .filter(filters::contains)
+                        .collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
             }
-        } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
-            throw new RuntimeException("Could not create effective model of " + bom, e);
         }
         return Collections.emptySet();
     }

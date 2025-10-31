@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.core.mima.JRebuildRuntime;
+import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.GavtcsSet;
@@ -54,7 +55,8 @@ public class ManagedGavsSelectorTest {
     }
 
     static void assertGavSet(Context context, Gav bom, GavtcsSet gavtcsSet, String... expected) {
-        Set<Gavtc> result = ManagedGavsSelector.select(context, bom, gavtcsSet);
+        Set<Gavtc> result = new ManagedGavsSelector(
+                context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel).select(bom, gavtcsSet);
         Assertions.assertThat(result).isEqualTo(
                 Stream.of(expected).map(Gavtc::of).collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
     }
