@@ -33,6 +33,7 @@ public class ScmRepositoryLocatorTest {
         try (Context context = runtime.create(overrides.build())) {
             Builder builder = DependencyCollectorRequest.builder()
                     .includeOptionalDependencies(true)
+                    //.includeParentsAndImports(false)
                     .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1"));
             DependencyCollectorRequest re = builder.build();
             final ScmRepositoryLocator locator = new ScmRepositoryLocator(
@@ -47,7 +48,7 @@ public class ScmRepositoryLocatorTest {
             Assertions.assertThat(trees).containsExactly(
                     """
                             https://github.com/l2x6/jrebuild-test#0.0.1 [org.l2x6.jrebuild.test-project:*:0.0.1]
-                            `- https://github.com/l2x6/jrebuild-test-transitive#0.0.1 [org.l2x6.jrebuild.test-project:jrebuild-test-transitive:0.0.1:jar]
+                            `- https://github.com/l2x6/jrebuild-test-transitive#0.0.1 [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
                             """);
         }
 

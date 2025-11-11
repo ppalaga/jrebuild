@@ -17,7 +17,7 @@ import java.util.function.Function;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
-import org.l2x6.jrebuild.core.dep.ResolvedArtifact;
+import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode;
 import org.l2x6.jrebuild.core.tree.Node;
 import org.l2x6.jrebuild.core.tree.Visitor;
 import org.l2x6.pom.tuner.model.Gav;
@@ -37,13 +37,13 @@ public class ScmRepositoryLocator {
         return new ScmRepositoryLocatorVisitor();
     }
 
-    public class ScmRepositoryLocatorVisitor implements Visitor<ResolvedArtifact, ScmRepositoryLocatorVisitor> {
+    public class ScmRepositoryLocatorVisitor implements Visitor<ResolvedArtifactNode, ScmRepositoryLocatorVisitor> {
 
         private final Deque<ScmInfoNode> stack = new ArrayDeque<>();
         private ScmInfoNode rootNode;
 
         @Override
-        public boolean enter(ResolvedArtifact node) {
+        public boolean enter(ResolvedArtifactNode node) {
             Gavtc gavtc = node.gavtc();
             Gav gav = gavtc.toGav();
             if (stack.isEmpty()) {
@@ -66,7 +66,7 @@ public class ScmRepositoryLocator {
         }
 
         @Override
-        public boolean leave(ResolvedArtifact node) {
+        public boolean leave(ResolvedArtifactNode node) {
             ScmInfoNode rn = stack.peek();
             if (rn.depth.getAndDecrement() == 0) {
                 stack.pop();
@@ -81,7 +81,7 @@ public class ScmRepositoryLocator {
             return rootNode;
         }
 
-        private ScmRef findScmRef(Gav gav, ResolvedArtifact node) {
+        private ScmRef findScmRef(Gav gav, ResolvedArtifactNode node) {
             final Model model = getEffectiveModel.apply(gav);
             return findScmRef(gav, model, gav.getVersion());
         }

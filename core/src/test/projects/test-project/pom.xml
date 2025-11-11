@@ -21,6 +21,8 @@
         <module>optional</module>
         <module>imported</module>
         <module>transitive</module>
+        <module>build-parent</module>
+        <module>build-child</module>
     </modules>
     <scm>
         <connection>scm:git:https://github.com/l2x6/jrebuild-test</connection>

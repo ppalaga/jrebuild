@@ -15,7 +15,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.l2x6.jrebuild.test-project</groupId>
+            <groupId>org.l2x6.jrebuild.test-transitive</groupId>
             <artifactId>jrebuild-test-transitive</artifactId>
             <version>0.0.1</version>
             <optional>true</optional>

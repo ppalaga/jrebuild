@@ -8,17 +8,16 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.l2x6.jrebuild.test-project</groupId>
-        <artifactId>jrebuild-test-project</artifactId>
+        <artifactId>jrebuild-test-build-parent</artifactId>
         <version>0.0.1</version>
+        <relativePath>../build-parent/pom.xml</relativePath>
     </parent>
-    <artifactId>jrebuild-test-optional</artifactId>
+    <artifactId>jrebuild-test-build-child</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>org.l2x6.jrebuild.test-transitive</groupId>
-            <artifactId>jrebuild-test-transitive</artifactId>
-            <version>0.0.1</version>
-            <optional>true</optional>
+            <groupId>org.l2x6.jrebuild.test-project</groupId>
+            <artifactId>jrebuild-test-api</artifactId>
         </dependency>
     </dependencies>
 

@@ -18,7 +18,8 @@ public record DependencyCollectorRequest(
         Gav rootBom,
         Collection<Gavtc> rootArtifacts,
         Collection<Gav> additionalBoms,
-        boolean includeOptionalDependencies) {
+        boolean includeOptionalDependencies,
+        boolean includeParentsAndImports) {
 
     public static Builder builder() {
         return new Builder();
@@ -30,6 +31,7 @@ public record DependencyCollectorRequest(
         private List<Gavtc> rootArtifacts = new ArrayList<>();
         private List<Gav> additionalBoms = new ArrayList<>();
         private boolean includeOptionalDependencies = false;
+        private boolean includeParentsAndImports = true;
 
         public Builder projectDirectory(Path projectDirectory) {
             this.projectDirectory = projectDirectory;
@@ -63,6 +65,16 @@ public record DependencyCollectorRequest(
             return this;
         }
 
+        public Builder includeParentsAndImports(boolean includeParentsAndImports) {
+            this.includeParentsAndImports = includeParentsAndImports;
+            return this;
+        }
+
+        public Builder includeParentsAndImports() {
+            this.includeParentsAndImports = true;
+            return this;
+        }
+
         public Builder additionalBoms(Collection<Gav> additionalBoms) {
             this.additionalBoms.addAll(additionalBoms);
             return this;
@@ -73,7 +85,8 @@ public record DependencyCollectorRequest(
             rootArtifacts = null;
             Collection<Gav> aBoms = Collections.unmodifiableList(additionalBoms);
             additionalBoms = null;
-            return new DependencyCollectorRequest(projectDirectory, rootBom, rArtifs, aBoms, includeOptionalDependencies);
+            return new DependencyCollectorRequest(projectDirectory, rootBom, rArtifs, aBoms, includeOptionalDependencies,
+                    includeParentsAndImports);
         }
     }
 }

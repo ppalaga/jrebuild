@@ -8,7 +8,10 @@ import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.extensions.mmr.MavenModelReader;
 import eu.maveniverse.maven.mima.extensions.mmr.ModelRequest;
 import eu.maveniverse.maven.mima.extensions.mmr.ModelResponse;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.model.interpolation.StringVisitorModelInterpolator;
@@ -25,6 +28,8 @@ public class CachingMavenModelReader extends MavenModelReader {
 
     private final Context context;
     private final MavenModelReaderImpl mavenModelReaderImpl;
+
+    private final Map<Gav, ModelData> cache = new ConcurrentHashMap<Gav, CachingMavenModelReader.ModelData>();
 
     public CachingMavenModelReader(Context context) {
         super(context);
@@ -57,10 +62,15 @@ public class CachingMavenModelReader extends MavenModelReader {
     public ModelResponse readModel(ModelRequest request)
             throws VersionResolutionException, ArtifactResolutionException, ArtifactDescriptorException {
         Objects.requireNonNull(request, "request");
-        return mavenModelReaderImpl.readModel(context.repositorySystemSession(), request);
+        ModelResponse result = mavenModelReaderImpl.readModel(context.repositorySystemSession(), request);
+        final Artifact a = request.getArtifact();
+        final Gav gav = new Gav(a.getGroupId(), a.getArtifactId(), a.getVersion());
+        cache.computeIfAbsent(gav, k -> new ModelData(getParent(result), gav, result.interpolateModel(result.getRawModel()),
+                result.getEffectiveModel()));
+        return result;
     }
 
-    public ModelResponse readModel(Gav gav) {
+    public ModelData readModel(Gav gav) {
         final Artifact artifact = new DefaultArtifact(
                 gav.getGroupId(),
                 gav.getArtifactId(),
@@ -68,14 +78,47 @@ public class CachingMavenModelReader extends MavenModelReader {
                 "pom",
                 gav.getVersion());
         try {
-            return readModel(ModelRequest.builder().setArtifact(artifact).build());
+            final ModelResponse result = readModel(ModelRequest.builder().setArtifact(artifact).build());
+            return cache.computeIfAbsent(gav, k -> new ModelData(getParent(result), gav,
+                    result.interpolateModel(result.getRawModel()), result.getEffectiveModel()));
         } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
-            throw new RuntimeException("Could not read pom of " + gav, e);
+            throw new RuntimeException("Could not read pom of " + artifact, e);
+        }
+    }
+
+    public ModelData readModel(Artifact artifact) {
+        try {
+            final Gav gav = new Gav(artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersion());
+            final ModelResponse result = readModel(ModelRequest.builder().setArtifact(artifact).build());
+            return cache.computeIfAbsent(gav, k -> new ModelData(getParent(result), gav,
+                    result.interpolateModel(result.getRawModel()), result.getEffectiveModel()));
+        } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
+            throw new RuntimeException("Could not read pom of " + artifact, e);
         }
     }
 
     public Model readEffectiveModel(Gav gav) {
-        return readModel(gav).getEffectiveModel();
+        return readModel(gav).effectiveModel();
+    }
+
+    public record ModelData(Gav parent, Gav gav, Model interpolatedModel, Model effectiveModel) {
+    }
+
+    static Gav getParent(ModelResponse resp) {
+        Iterator<String> it = resp.getLineage().iterator();
+        if (it.hasNext()) {
+            /* Skip the first one which is the current pom.xml */
+            it.next();
+
+            if (it.hasNext()) {
+                String id = it.next();
+                if (!id.isEmpty()) {
+                    /* Ignore the super pom */
+                    return Gav.of(id);
+                }
+            }
+        }
+        return null;
     }
 
 }

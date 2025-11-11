@@ -11,28 +11,17 @@
         <artifactId>jrebuild-test-project</artifactId>
         <version>0.0.1</version>
     </parent>
-    <artifactId>jrebuild-test-bom</artifactId>
+    <artifactId>jrebuild-test-build-parent</artifactId>
     <packaging>pom</packaging>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.l2x6.jrebuild.test-project</groupId>
-                <artifactId>jrebuild-test-imported-bom</artifactId>
-                <version>0.0.1</version>
+                <artifactId>jrebuild-test-bom</artifactId>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.l2x6.jrebuild.test-project</groupId>
-                <artifactId>jrebuild-test-api</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.l2x6.jrebuild.test-project</groupId>
-                <artifactId>jrebuild-test-impl</artifactId>
-                <version>0.0.1</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
