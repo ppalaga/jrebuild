@@ -1,0 +1,8 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+type: "git"
+uri: "https://github.com/lz4/lz4-java.git"
