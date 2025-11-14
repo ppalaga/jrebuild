@@ -15,8 +15,6 @@
     <artifactId>jrebuild-core</artifactId>
     <packaging>jar</packaging>
 
-    <name>jrebuild core</name>
-
     <properties>
     </properties>
 
