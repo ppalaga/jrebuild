@@ -1,0 +1,30 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.l2x6.jrebuild.test-project</groupId>
+        <artifactId>jrebuild-test-project</artifactId>
+        <version>0.0.1</version>
+    </parent>
+    <artifactId>jrebuild-test-impl</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.l2x6.jrebuild.test-project</groupId>
+            <artifactId>jrebuild-test-api</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.l2x6.jrebuild.test-project</groupId>
+            <artifactId>jrebuild-test-optional</artifactId>
+            <version>0.0.1</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

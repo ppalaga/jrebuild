@@ -1,0 +1,19 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.l2x6.jrebuild.test-transitive</groupId>
+    <artifactId>jrebuild-test-transitive</artifactId>
+    <version>0.0.1</version>
+
+    <scm>
+        <connection>scm:git:https://github.com/l2x6/jrebuild-test-transitive</connection>
+        <developerConnection>scm:git:https://github.com/l2x6/jrebuild-test-transitive.git</developerConnection>
+        <url>https://github.com/l2x6/jrebuild-test-transitive</url>
+        <tag>0.0.1</tag>
+    </scm>
+</project>

@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import org.l2x6.jrebuild.core.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 

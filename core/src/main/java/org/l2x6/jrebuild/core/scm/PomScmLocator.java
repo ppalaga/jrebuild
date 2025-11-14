@@ -2,14 +2,14 @@
  * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.l2x6.jrebuild.core.scm.locator;
+package org.l2x6.jrebuild.core.scm;
 
 import java.util.function.Function;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
-import org.l2x6.jrebuild.core.scm.ScmLocator;
-import org.l2x6.jrebuild.core.scm.ScmRef;
-import org.l2x6.jrebuild.core.scm.ScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmLocator;
+import org.l2x6.jrebuild.api.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.pom.tuner.model.Gav;
 
 public class PomScmLocator implements ScmLocator {
@@ -21,7 +21,7 @@ public class PomScmLocator implements ScmLocator {
     }
 
     @Override
-    public ScmRef locate(Gav gav) {
+    public org.l2x6.jrebuild.api.scm.ScmRef locate(Gav gav) {
         final Model effectiveModel = getEffectiveModel.apply(gav);
         final Scm scm = effectiveModel.getScm();
         if (scm != null) {

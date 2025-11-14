@@ -15,12 +15,15 @@
     <artifactId>jrebuild-core</artifactId>
     <packaging>jar</packaging>
 
-    <name>jrebuild core</name>
-
     <properties>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.l2x6.jrebuild</groupId>
+            <artifactId>jrebuild-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
