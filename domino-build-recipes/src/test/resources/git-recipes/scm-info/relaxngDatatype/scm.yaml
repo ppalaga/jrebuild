@@ -1,0 +1,11 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+type: "git"
+uri: "https://github.com/java-schema-utilities/relaxng-datatype-java.git"
+tagMapping:
+  - pattern: 20020414
+    tag: a83e0896eddbd57a6c8c7afe9cae907199d5108b

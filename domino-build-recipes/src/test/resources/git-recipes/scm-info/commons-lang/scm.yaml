@@ -1,0 +1,13 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+type: "git"
+uri: "https://github.com/apache/commons-lang.git"
+tagMapping:
+  - pattern: (\d+)\.(\d+)
+    tag: LANG_$1_$2
+  - pattern: (\d+)\.(\d+)\.(\d+)
+    tag: LANG_$1_$2_$3

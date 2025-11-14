@@ -47,7 +47,7 @@ public class GitScmLocator implements ScmLocator {
     public static class Builder {
 
         public RecipeGroupManager recipeGroupManager;
-        private List<String> recipeRepos = List.of(BuildRecipe.DEFAULT_RECIPE_REPO_URL);
+        private List<String> recipeRepos = List.of();
         private boolean cacheRepoTags;
         private String cacheUrl;
         private ScmLocator fallbackScmLocator;

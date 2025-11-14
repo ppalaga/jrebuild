@@ -16,7 +16,6 @@ import org.l2x6.jrebuild.domino.scm.recipes.scm.ScmInfoManager;
  * This is not an enum to allow for extensibility
  */
 public class BuildRecipe<T> {
-    public static final String DEFAULT_RECIPE_REPO_URL = "https://github.com/redhat-appstudio/jvm-build-data";
 
     public static final BuildRecipe<ScmInfo> SCM = new BuildRecipe<>("scm.yaml", new ScmInfoManager());
     public static final BuildRecipe<BuildRecipeInfo> BUILD = new BuildRecipe<>("build.yaml", new BuildRecipeInfoManager());
