@@ -2,12 +2,13 @@
  * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.l2x6.jrebuild.core.scm;
+package org.l2x6.jrebuild.core.build;
 
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.l2x6.jrebuild.core.scm.ScmRef;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 

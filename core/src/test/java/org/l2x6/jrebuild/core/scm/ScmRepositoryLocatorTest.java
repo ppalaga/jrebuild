@@ -19,7 +19,7 @@ import org.l2x6.jrebuild.core.dep.DependencyCollectorTest;
 import org.l2x6.jrebuild.core.dep.JrebuildTestUtils;
 import org.l2x6.jrebuild.core.mima.JRebuildRuntime;
 import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader;
-import org.l2x6.jrebuild.core.scm.ScmRepositoryLocator.ScmInfoNode;
+import org.l2x6.jrebuild.core.scm.ScmRepositoryService.ScmInfoNode;
 import org.l2x6.jrebuild.core.tree.PrintVisitor;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -36,7 +36,7 @@ public class ScmRepositoryLocatorTest {
                     //.includeParentsAndImports(false)
                     .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1"));
             DependencyCollectorRequest re = builder.build();
-            final ScmRepositoryLocator locator = new ScmRepositoryLocator(
+            final ScmRepositoryService locator = ScmRepositoryService.create(
                     context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel);
             List<String> trees = DependencyCollector.collect(context, re)
                     .map(resolvedArtifact -> {
@@ -51,7 +51,6 @@ public class ScmRepositoryLocatorTest {
                             `- https://github.com/l2x6/jrebuild-test-transitive#0.0.1 [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
                             """);
         }
-
     }
 
 }
