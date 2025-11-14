@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
@@ -49,7 +50,6 @@ public class GitScmLocator implements ScmLocator {
         public RecipeGroupManager recipeGroupManager;
         private List<String> recipeRepos = List.of();
         private boolean cacheRepoTags;
-        private String cacheUrl;
         private ScmLocator fallbackScmLocator;
         private boolean cloneLocalRecipeRepos = true;
         private Path gitCloneBaseDir;
@@ -83,7 +83,7 @@ public class GitScmLocator implements ScmLocator {
         }
 
         /**
-         * Whether to cache code repository tags between {@link ScmLocator#resolveTagInfo(GAV)} calls
+         * Whether to cache code repository tags between {@link ScmLocator#resolveTagInfo(Gav)} calls
          *
          * @param  cacheRepoTags whether to cache code repository tags
          * @return               this builder instance
@@ -161,19 +161,20 @@ public class GitScmLocator implements ScmLocator {
             //checkout the git recipe database and load the recipes
             final List<RecipeDirectory> managers = new ArrayList<>(recipeRepos.size());
             for (var i : recipeRepos) {
-                final RecipeRepositoryManager repoManager;
+                final RecipeDirectory repoManager;
                 if (remotePattern == null || remotePattern.matcher(i).matches()) {
-                    log.infof("Cloning recipe repo %s", i);
                     try {
-                        repoManager = gitCloneBaseDir == null
-                                ? RecipeRepositoryManager.create(i)
-                                : RecipeRepositoryManager.create(i, Optional.empty(),
-                                        Files.createTempDirectory(gitCloneBaseDir, "recipe"));
+                        if (gitCloneBaseDir == null) {
+                            repoManager = RecipeRepositoryManager.create(i);
+                        } else {
+                            final Path workingCopyDir = gitCloneBaseDir.resolve(uriToFileName(i));
+                            Files.createDirectories(workingCopyDir);
+                            repoManager = RecipeRepositoryManager.create(i, Optional.empty(), workingCopyDir);
+                        }
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to checkout " + i, e);
                     }
                 } else {
-                    log.infof("Opening local recipe repo %s", i);
                     final Path p;
                     if (i.startsWith("file:")) {
                         p = Path.of(i.substring("file:".length()));
@@ -195,14 +196,22 @@ public class GitScmLocator implements ScmLocator {
 
     public TagInfo resolveTagInfo(Gav toBuild) {
 
-        log.debugf("Looking up %s", toBuild);
+        log.tracef("Looking up %s", toBuild);
 
         var recipeGroupManager = getRecipeGroupManager();
 
         //look for SCM info
         var recipes = recipeGroupManager
                 .lookupScmInformation(toBuild);
-        log.infof("Found the following build info files for %s: %s", toBuild, recipes);
+        if (log.isDebugEnabled()) {
+            log.tracef(
+                    "Build info files found for %s: %s",
+                    toBuild,
+                    recipes.stream()
+                            .map(gitCloneBaseDir::relativize)
+                            .map(Path::toString)
+                            .collect(Collectors.joining(", ")));
+        }
 
         List<RepositoryInfo> repos = new ArrayList<>();
         List<TagMapping> allMappings = new ArrayList<>();
@@ -223,7 +232,7 @@ public class GitScmLocator implements ScmLocator {
 
         TagInfo fallbackTagInfo = null;
         if (repos.isEmpty()) {
-            log.infof("No SCM information found for %s, attempting to use the pom to determine the location", toBuild);
+            log.debugf("No SCM information found for %s, attempting to use the pom to determine the location", toBuild);
             //TODO: do we want to rely on pom discovery long term? Should we just use this to update the database instead?
             if (fallbackScmLocator != null) {
                 fallbackTagInfo = fallbackScmLocator.resolveTagInfo(toBuild);
@@ -238,7 +247,7 @@ public class GitScmLocator implements ScmLocator {
 
         RuntimeException firstFailure = null;
         for (var parsedInfo : repos) {
-            log.debugf("Looking for a tag in %s", parsedInfo.getUri());
+            log.tracef("Looking for a tag in %s", parsedInfo.getUri());
 
             //now look for a tag
             try {
@@ -246,7 +255,7 @@ public class GitScmLocator implements ScmLocator {
                 if (fallbackTagInfo != null && fallbackTagInfo.getTag() != null) {
                     var hash = tagsToHash.get(fallbackTagInfo.getTag());
                     if (hash != null) {
-                        return new TagInfo(fallbackTagInfo.getRepoInfo(), fallbackTagInfo.getTag(), hash);
+                        return log(new TagInfo(fallbackTagInfo.getRepoInfo(), fallbackTagInfo.getTag(), hash));
                     }
                 }
 
@@ -256,15 +265,15 @@ public class GitScmLocator implements ScmLocator {
 
                 //first try tag mappings
                 for (var mapping : allMappings) {
-                    log.debugf("Trying tag pattern %s on version %s", mapping.getPattern(), version);
+                    log.tracef("Trying tag pattern %s on version %s", mapping.getPattern(), version);
                     Matcher m = Pattern.compile(mapping.getPattern()).matcher(version);
                     if (m.matches()) {
-                        log.debugf("Tag pattern %s matches", mapping.getPattern());
+                        log.tracef("Tag pattern %s matches", mapping.getPattern());
                         String match = mapping.getTag();
                         for (int i = 0; i <= m.groupCount(); ++i) {
                             match = match.replaceAll("\\$" + i, m.group(i));
                         }
-                        log.debugf("Trying to find tag %s", match);
+                        log.tracef("Trying to find tag %s", match);
                         //if the tag was a constant we don't require it to be in the tag set
                         //this allows for explicit refs to be used
                         if (tagsToHash.containsKey(match) || match.equals(mapping.getTag())) {
@@ -294,10 +303,7 @@ public class GitScmLocator implements ScmLocator {
                     if (hash == null) {
                         hash = selectedTag; //sometimes the tag is a hash
                     }
-
-                    TagInfo result = new TagInfo(parsedInfo, selectedTag, hash);
-                    log.infof("Returning tag information of %s", result);
-                    return result;
+                    return log(new TagInfo(parsedInfo, selectedTag, hash));
                 }
             } catch (RuntimeException ex) {
                 log.error("Failure to determine tag", ex);
@@ -313,6 +319,11 @@ public class GitScmLocator implements ScmLocator {
         }
 
         return null;
+    }
+
+    static TagInfo log(TagInfo result) {
+        log.infof("Found tag: %s", result);
+        return result;
     }
 
     static String runTagHeuristic(String version, Map<String, String> tagsToHash) {
@@ -373,6 +384,16 @@ public class GitScmLocator implements ScmLocator {
             }
         }
         return selectedTag;
+    }
+
+    static String uriToFileName(String uri) {
+        return uri.replaceAll("^(http:|https:|git(\\+ssh)?:|ssh:|file:)/+", "")
+                .replaceAll("^git@", "")
+                .replaceAll("[^A-Za-z0-9._-]+", "-")
+                .replace("-[\\-]+", "-")
+                .replaceAll("^[-.]+", "")
+                .replaceAll("[-.]+$", "")
+                .replaceAll("\\.git$", "");
     }
 
     private Map<String, String> getTagToHashMap(RepositoryInfo repo) {

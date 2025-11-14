@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Objects;
-import java.util.logging.Logger;
+import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.RecipeManager;
 
 public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {

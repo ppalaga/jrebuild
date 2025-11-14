@@ -18,12 +18,16 @@ import java.util.Map;
 import java.util.UUID;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.l2x6.pom.tuner.model.Gav;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 class GitScmLocatorTest {
+    private static final Logger log = Logger.getLogger(GitScmLocatorTest.class);
     static String gitRepoUri;
     static Path gitRepoCloneDir;
 
@@ -77,15 +81,51 @@ class GitScmLocatorTest {
 
     @Test
     void lookupScmInfoCommonsLang() {
-        TagInfo tag = GitScmLocator.builder()
+        assertCommonsTag(GitScmLocator.builder()
                 .setGitCloneBaseDir(gitRepoCloneDir)
                 .setRecipeRepos(List.of(gitRepoUri))
-                .build()
-                .resolveTagInfo(Gav.of("commons-lang:commons-lang:2.5"));
+                .build());
+    }
+
+    private void assertCommonsTag(GitScmLocator locator) {
+        TagInfo tag = locator.resolveTagInfo(Gav.of("commons-lang:commons-lang:2.5"));
         Assertions.assertNotNull(tag);
         Assertions.assertEquals(tag.getTag(), "LANG_2_5");
         Assertions.assertNotEquals(tag.getTag(), tag.getHash());
         Assertions.assertEquals(tag.getRepoInfo().getUri(), "https://github.com/apache/commons-lang.git");
+    }
+
+    @Test
+    void reuseWorkingCopy() {
+        final Path gitCloneDir = Path.of("target/GitScmLocatorTest/lookupScmInfoCommonsLang-" + UUID.randomUUID());
+        assertThat(gitCloneDir).doesNotExist();
+
+        final String repoUrl = gitRepoUri;
+        {
+            long t1 = System.currentTimeMillis();
+            final GitScmLocator locator = GitScmLocator.builder()
+                    .setRecipeRepos(List.of(repoUrl))
+                    .setGitCloneBaseDir(gitCloneDir)
+                    .build();
+            assertCommonsTag(locator);
+
+            log.infof("Lookup time with clonig: %d ms", (System.currentTimeMillis() - t1));
+
+            assertThat(gitCloneDir).exists();
+            assertThat(gitCloneDir.resolve(
+                    GitScmLocator.uriToFileName(repoUrl) + "/.git")).exists();
+        }
+
+        // reuse the existing repo
+        {
+            long t1 = System.currentTimeMillis();
+            final GitScmLocator locator = GitScmLocator.builder()
+                    .setRecipeRepos(List.of(repoUrl))
+                    .setGitCloneBaseDir(gitCloneDir)
+                    .build();
+            assertCommonsTag(locator);
+            log.infof("Lookup time with fetch & reset: %d ms", (System.currentTimeMillis() - t1));
+        }
     }
 
     //test tag mapping heuristics
@@ -100,6 +140,21 @@ class GitScmLocatorTest {
         runPassingTest("1.0.Final", "1.0", "1.0", "1.0.a1");
         runFailingTest("1.0", "1.0.Beta1", "1.0.Alpha1");
         runFailingTest("1.0", "1.0.Final", "1.0.Alpha1");
+    }
+
+    @Test
+    void uriToFileName() {
+        assertThat(GitScmLocator.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
+                .isEqualTo("github.com-path-to-report.pdf-download-1-section");
+        assertThat(GitScmLocator.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
+        assertThat(GitScmLocator.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
+                .isEqualTo("C-Program-Files-Some-App-app.exe");
+        assertThat(GitScmLocator.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
+                .isEqualTo("C-Program-Files-Some-App-app.exe");
+        assertThat(GitScmLocator.uriToFileName("git+ssh://git@github.com:owner/repo.git")).isEqualTo("github.com-owner-repo");
+        assertThat(GitScmLocator.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
+        assertThat(GitScmLocator.uriToFileName("git@github.com:quarkusio/quarkus.git"))
+                .isEqualTo("github.com-quarkusio-quarkus");
     }
 
     void runPassingTest(String version, String expected, String... tags) {

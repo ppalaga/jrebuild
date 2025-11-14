@@ -10,9 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.build.AddBuildRecipeRequest;
 import org.l2x6.jrebuild.domino.scm.recipes.util.ComparableVersion;
 
@@ -39,10 +39,11 @@ import org.l2x6.jrebuild.domino.scm.recipes.util.ComparableVersion;
  */
 public class RecipeLayoutManager implements RecipeDirectory {
 
-    private static final Logger log = Logger.getLogger(RecipeLayoutManager.class.getName());
+    private static final Logger log = Logger.getLogger(RecipeLayoutManager.class);
 
     public static final String ARTIFACT = "_artifact";
     public static final String VERSION = "_version";
+    private final Path baseDirectory;
     private final Path scmInfoDirectory;
     private final Path buildInfoDirectory;
     private final Path repositoryInfoDirectory;
@@ -50,6 +51,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
     private final Path pluginInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
+        this.baseDirectory = baseDirectory;
         scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
         buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
         repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
@@ -65,7 +67,9 @@ public class RecipeLayoutManager implements RecipeDirectory {
         Path artifactFolder = groupPath.resolve(ARTIFACT);
         Path artifactPath = artifactFolder.resolve(artifactId);
         Path artifactAndVersionPath = null;
-        log.warning("Searching for recipe in " + groupPath);
+        if (log.isDebugEnabled()) {
+            log.debugf("Searching for recipe in %s", shortenPath(groupPath));
+        }
 
         if (Files.notExists(groupPath)) {
             return Optional.empty();
@@ -84,6 +88,10 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
         return Optional
                 .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
+    }
+
+    Path shortenPath(Path p) {
+        return baseDirectory.getParent().relativize(p);
     }
 
     @Override
