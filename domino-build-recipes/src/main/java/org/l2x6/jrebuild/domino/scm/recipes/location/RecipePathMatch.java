@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * The results of path matching a specific GAV from a repository database
  *
- * The paths are listed from least specific to mast specific, so files in the most specific
+ * The paths are listed from least specific to most specific, so files in the most specific
  * path will be used preferentially.
  *
  *
@@ -35,18 +35,30 @@ public class RecipePathMatch {
         this.groupAuthoritative = groupIsAuthoritative;
     }
 
+    /**
+     * @return an existing {@link Path} or {@code null}
+     */
     public Path getGroup() {
         return group;
     }
 
+    /**
+     * @return an existing {@link Path} or {@code null}
+     */
     public Path getArtifact() {
         return artifact;
     }
 
+    /**
+     * @return an existing {@link Path} or {@code null}
+     */
     public Path getVersion() {
         return version;
     }
 
+    /**
+     * @return an existing {@link Path} or {@code null}
+     */
     public Path getArtifactAndVersion() {
         return artifactAndVersion;
     }

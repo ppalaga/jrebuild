@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
 import org.l2x6.pom.tuner.model.Gav;
@@ -20,11 +22,44 @@ import org.l2x6.pom.tuner.model.Gav;
 public class RecipeGroupManager {
 
     private static final Logger log = Logger.getLogger(RecipeGroupManager.class.getName());
+    private static final Pattern remotePattern = Pattern.compile("(?!file\\b)\\w+?:\\/\\/.*");
 
     /**
      * The repositories, the highest priority first
      */
     private final List<RecipeDirectory> repositories;
+
+    public static RecipeGroupManager of(Path gitCloneBaseDir, List<String> recipeRepos) {
+        //checkout the git recipe database and load the recipes
+        final List<RecipeDirectory> managers = new ArrayList<>(recipeRepos.size());
+        for (var url : recipeRepos) {
+            final RecipeDirectory repoManager;
+            if (isCloneable(url)) {
+                try {
+                    final Path workingCopyDir = gitCloneBaseDir.resolve(uriToFileName(url));
+                    Files.createDirectories(workingCopyDir);
+                    repoManager = RecipeRepositoryManager.create(url, workingCopyDir);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to checkout " + url, e);
+                }
+            } else {
+                final Path p;
+                if (url.startsWith("file://")) {
+                    p = Path.of(url.substring("file://".length()));
+                } else {
+                    p = Path.of(url);
+                }
+                repoManager = new RecipeLayoutManager(p);
+            }
+            managers.add(repoManager);
+        }
+        return new RecipeGroupManager(managers);
+    }
+
+    private static boolean isCloneable(String url) {
+        return remotePattern.matcher(url).matches()
+                || (url.startsWith("file://") && (url.endsWith("/.git") || url.endsWith("\\.git")));
+    }
 
     public RecipeGroupManager(List<RecipeDirectory> repositories) {
         this.repositories = repositories;
@@ -42,15 +77,15 @@ public class RecipeGroupManager {
 
         List<RecipePathMatch> paths = new ArrayList<>();
         //we need to do a lookup
-        for (var r : repositories) {
-            var possible = r.getArtifactPaths(gav.getGroupId(), gav.getArtifactId(),
+        for (RecipeDirectory r : repositories) {
+            Optional<RecipePathMatch> possible = r.getArtifactPaths(gav.getGroupId(), gav.getArtifactId(),
                     gav.getVersion());
             if (possible.isPresent()) {
                 paths.add(possible.get());
             }
         }
 
-        for (var path : paths) {
+        for (RecipePathMatch path : paths) {
             if (path.getArtifactAndVersion() != null) {
                 //if there is a file specific to this group, artifact and version it takes priority
                 Path resolvedPath = path.getArtifactAndVersion().resolve(BuildRecipe.SCM.getName());
@@ -119,6 +154,16 @@ public class RecipeGroupManager {
         return new BuildInfoResponse(buildResults);
     }
 
+    public static String uriToFileName(String uri) {
+        return uri.replaceAll("^(http:|https:|git(\\+ssh)?:|ssh:|file:)/+", "")
+                .replaceAll("^git@", "")
+                .replaceAll("[^A-Za-z0-9._-]+", "-")
+                .replace("-[\\-]+", "-")
+                .replaceAll("^[-.]+", "")
+                .replaceAll("[-.]+$", "")
+                .replaceAll("\\.git$", "");
+    }
+
     public static String normalizeScmUri(String scmUri) {
         // Remove any fragment
         int pos = scmUri.indexOf("#");
@@ -135,9 +180,4 @@ public class RecipeGroupManager {
         return scmUri;
     }
 
-    public void forceUpdate() {
-        for (var r : repositories) {
-            r.update();
-        }
-    }
 }

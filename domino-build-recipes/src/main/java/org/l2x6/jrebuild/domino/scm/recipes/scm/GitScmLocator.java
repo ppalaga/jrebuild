@@ -6,7 +6,6 @@ package org.l2x6.jrebuild.domino.scm.recipes.scm;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,9 +23,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
-import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeDirectory;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
-import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeRepositoryManager;
 import org.l2x6.jrebuild.domino.scm.recipes.util.GitCredentials;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -37,171 +33,23 @@ public class GitScmLocator implements ScmLocator {
 
     private static final Pattern NUMERIC_PART = Pattern.compile("(\\d+)(\\.\\d+)+");
 
-    public static GitScmLocator getInstance() {
-        return builder().build();
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-
-        public RecipeGroupManager recipeGroupManager;
-        private List<String> recipeRepos = List.of();
-        private boolean cacheRepoTags;
-        private ScmLocator fallbackScmLocator;
-        private boolean cloneLocalRecipeRepos = true;
-        private Path gitCloneBaseDir;
-
-        private Builder() {
-        }
-
-        /**
-         * Base directory for cloning recipe repositories. If not provided,
-         * each repository will be cloned in a temporary directory.
-         *
-         * @param  gitCloneBaseDir base directory for cloning recipe repositories
-         * @return                 this builder instance
-         */
-        public Builder setGitCloneBaseDir(Path gitCloneBaseDir) {
-            this.gitCloneBaseDir = gitCloneBaseDir;
-            return this;
-        }
-
-        /**
-         * A list of build recipe repo URIs
-         *
-         * @param  recipeRepos recipe repo URIs
-         * @return             this builder instance
-         */
-        public Builder setRecipeRepos(List<String> recipeRepos) {
-            if (recipeRepos != null && !recipeRepos.isEmpty()) {
-                this.recipeRepos = recipeRepos;
-            }
-            return this;
-        }
-
-        /**
-         * Whether to cache code repository tags between {@link ScmLocator#resolveTagInfo(Gav)} calls
-         *
-         * @param  cacheRepoTags whether to cache code repository tags
-         * @return               this builder instance
-         */
-        public Builder setCacheRepoTags(boolean cacheRepoTags) {
-            this.cacheRepoTags = cacheRepoTags;
-            return this;
-        }
-
-        /**
-         * An SCM locator that should be used in case no information was found in the configured recipe repositories.
-         *
-         * @param  fallbackScmLocator SCM locator that should be used in case no information was found in the configured recipe
-         *                            repositories
-         * @return                    this builder instance
-         */
-        public Builder setFallback(ScmLocator fallbackScmLocator) {
-            this.fallbackScmLocator = fallbackScmLocator;
-            return this;
-        }
-
-        /**
-         * By default all the configured recipe repositories are cloned into a temporary
-         * directory whether they are remote or or available locally.
-         * If a local repository is cloned before it is opened then the uncommitted changes present
-         * in the original local repository won't be visible to the recipe repository manager.
-         *
-         * @param  cloneLocalRecipeRepos whether to clone local recipe repositories when initializing recipe repository managers
-         * @return                       this builder instance
-         */
-        public Builder setCloneLocalRecipeRepos(boolean cloneLocalRecipeRepos) {
-            this.cloneLocalRecipeRepos = cloneLocalRecipeRepos;
-            return this;
-        }
-
-        /**
-         * Explicitly use an existing {@link RecipeRepositoryManager}. If this is set then other repository settings will have
-         * no effect.
-         *
-         * @param  recipeGroupManager The manager
-         * @return                    this builder instance
-         */
-        public Builder setRecipeGroupManager(RecipeGroupManager recipeGroupManager) {
-            this.recipeGroupManager = recipeGroupManager;
-            return this;
-        }
-
-        public GitScmLocator build() {
-            return new GitScmLocator(this);
-        }
-    }
-
-    private final List<String> recipeRepos;
-    private final boolean cacheRepoTags;
-    private final ScmLocator fallbackScmLocator;
     private final Map<String, Map<String, String>> repoTagsToHash;
-    private final boolean cloneLocalRecipeRepos;
     private final Path gitCloneBaseDir;
 
-    private RecipeGroupManager recipeGroupManager;
+    private final RecipeGroupManager recipeGroupManager;
 
-    private GitScmLocator(Builder builder) {
-        this.recipeRepos = builder.recipeRepos;
-        this.cacheRepoTags = builder.cacheRepoTags;
-        this.fallbackScmLocator = builder.fallbackScmLocator;
-        this.repoTagsToHash = cacheRepoTags ? new HashMap<>() : Map.of();
-        this.cloneLocalRecipeRepos = builder.cloneLocalRecipeRepos;
-        this.recipeGroupManager = builder.recipeGroupManager;
-        this.gitCloneBaseDir = builder.gitCloneBaseDir;
-    }
-
-    private RecipeGroupManager getRecipeGroupManager() {
-        if (recipeGroupManager == null) {
-            final Pattern remotePattern = cloneLocalRecipeRepos ? null : Pattern.compile("(?!file\\b)\\w+?:\\/\\/.*");
-            //checkout the git recipe database and load the recipes
-            final List<RecipeDirectory> managers = new ArrayList<>(recipeRepos.size());
-            for (var i : recipeRepos) {
-                final RecipeDirectory repoManager;
-                if (remotePattern == null || remotePattern.matcher(i).matches()) {
-                    try {
-                        if (gitCloneBaseDir == null) {
-                            repoManager = RecipeRepositoryManager.create(i);
-                        } else {
-                            final Path workingCopyDir = gitCloneBaseDir.resolve(uriToFileName(i));
-                            Files.createDirectories(workingCopyDir);
-                            repoManager = RecipeRepositoryManager.create(i, Optional.empty(), workingCopyDir);
-                        }
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to checkout " + i, e);
-                    }
-                } else {
-                    final Path p;
-                    if (i.startsWith("file:")) {
-                        p = Path.of(i.substring("file:".length()));
-                    } else {
-                        p = Path.of(i);
-                    }
-                    try {
-                        repoManager = RecipeRepositoryManager.createLocal(p);
-                    } catch (GitAPIException e) {
-                        throw new RuntimeException("Failed to initialize recipe manager from local repository " + i, e);
-                    }
-                }
-                managers.add(repoManager);
-            }
-            recipeGroupManager = new RecipeGroupManager(managers);
-        }
-        return recipeGroupManager;
+    public GitScmLocator(Path gitCloneBaseDir, List<String> recipeRepos) {
+        this.repoTagsToHash = new HashMap<>();
+        this.gitCloneBaseDir = Objects.requireNonNull(gitCloneBaseDir, "gitCloneBaseDir");
+        this.recipeGroupManager = RecipeGroupManager.of(gitCloneBaseDir, recipeRepos);
     }
 
     public TagInfo resolveTagInfo(Gav toBuild) {
 
         log.tracef("Looking up %s", toBuild);
 
-        var recipeGroupManager = getRecipeGroupManager();
-
         //look for SCM info
-        var recipes = recipeGroupManager
+        List<Path> recipes = recipeGroupManager
                 .lookupScmInformation(toBuild);
         if (log.isDebugEnabled()) {
             log.tracef(
@@ -215,7 +63,7 @@ public class GitScmLocator implements ScmLocator {
 
         List<RepositoryInfo> repos = new ArrayList<>();
         List<TagMapping> allMappings = new ArrayList<>();
-        for (var recipe : recipes) {
+        for (Path recipe : recipes) {
             ScmInfo main;
             try {
                 main = BuildRecipe.SCM.getHandler().parse(recipe);
@@ -230,34 +78,13 @@ public class GitScmLocator implements ScmLocator {
             }
         }
 
-        TagInfo fallbackTagInfo = null;
-        if (repos.isEmpty()) {
-            log.debugf("No SCM information found for %s, attempting to use the pom to determine the location", toBuild);
-            //TODO: do we want to rely on pom discovery long term? Should we just use this to update the database instead?
-            if (fallbackScmLocator != null) {
-                fallbackTagInfo = fallbackScmLocator.resolveTagInfo(toBuild);
-                if (fallbackTagInfo != null) {
-                    repos = List.of(fallbackTagInfo.getRepoInfo());
-                }
-            }
-            if (repos.isEmpty()) {
-                throw new RuntimeException("Unable to determine SCM repo");
-            }
-        }
-
         RuntimeException firstFailure = null;
-        for (var parsedInfo : repos) {
+        for (RepositoryInfo parsedInfo : repos) {
             log.tracef("Looking for a tag in %s", parsedInfo.getUri());
 
             //now look for a tag
             try {
                 final Map<String, String> tagsToHash = getTagToHashMap(parsedInfo);
-                if (fallbackTagInfo != null && fallbackTagInfo.getTag() != null) {
-                    var hash = tagsToHash.get(fallbackTagInfo.getTag());
-                    if (hash != null) {
-                        return log(new TagInfo(fallbackTagInfo.getRepoInfo(), fallbackTagInfo.getTag(), hash));
-                    }
-                }
 
                 String version = toBuild.getVersion();
                 String underscoreVersion = version.replace(".", "_");
@@ -386,37 +213,20 @@ public class GitScmLocator implements ScmLocator {
         return selectedTag;
     }
 
-    static String uriToFileName(String uri) {
-        return uri.replaceAll("^(http:|https:|git(\\+ssh)?:|ssh:|file:)/+", "")
-                .replaceAll("^git@", "")
-                .replaceAll("[^A-Za-z0-9._-]+", "-")
-                .replace("-[\\-]+", "-")
-                .replaceAll("^[-.]+", "")
-                .replaceAll("[-.]+$", "")
-                .replaceAll("\\.git$", "");
-    }
-
     private Map<String, String> getTagToHashMap(RepositoryInfo repo) {
-        Map<String, String> tagsToHash = repoTagsToHash.get(repo.getUri());
-        if (tagsToHash == null) {
-            tagsToHash = getTagToHashMapFromGit(repo);
-            if (cacheRepoTags) {
-                repoTagsToHash.put(repo.getUri(), tagsToHash);
-            }
-        }
-        return tagsToHash;
+        return repoTagsToHash.computeIfAbsent(repo.getUriWithoutFragment(), k -> getTagToHashMapFromGit(k));
     }
 
-    private static Map<String, String> getTagToHashMapFromGit(RepositoryInfo parsedInfo) {
+    private static Map<String, String> getTagToHashMapFromGit(String uriWithoutFragment) {
         Map<String, String> tagsToHash;
         final Collection<Ref> tags;
         try {
             tags = Git.lsRemoteRepository()
                     .setCredentialsProvider(
                             new GitCredentials())
-                    .setRemote(parsedInfo.getUriWithoutFragment()).setTags(true).setHeads(false).call();
+                    .setRemote(uriWithoutFragment).setTags(true).setHeads(false).call();
         } catch (GitAPIException e) {
-            throw new RuntimeException("Failed to obtain a list of tags from " + parsedInfo.getUri(), e);
+            throw new RuntimeException("Failed to obtain a list of tags from " + uriWithoutFragment, e);
         }
         tagsToHash = new HashMap<>(tags.size());
         for (var tag : tags) {

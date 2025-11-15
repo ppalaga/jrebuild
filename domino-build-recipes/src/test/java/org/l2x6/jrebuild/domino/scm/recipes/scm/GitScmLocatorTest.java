@@ -22,6 +22,7 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
 import org.l2x6.pom.tuner.model.Gav;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,10 +69,7 @@ class GitScmLocatorTest {
 
     @Test
     void lookupScmInfoRelaxNG() {
-        TagInfo tag = GitScmLocator.builder()
-                .setGitCloneBaseDir(gitRepoCloneDir)
-                .setRecipeRepos(List.of(gitRepoUri))
-                .build()
+        TagInfo tag = new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri))
                 .resolveTagInfo(Gav.of("relaxngDatatype:relaxngDatatype:20020414"));
         Assertions.assertNotNull(tag);
         Assertions.assertEquals(tag.getTag(), tag.getHash());
@@ -81,10 +79,7 @@ class GitScmLocatorTest {
 
     @Test
     void lookupScmInfoCommonsLang() {
-        assertCommonsTag(GitScmLocator.builder()
-                .setGitCloneBaseDir(gitRepoCloneDir)
-                .setRecipeRepos(List.of(gitRepoUri))
-                .build());
+        assertCommonsTag(new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri)));
     }
 
     private void assertCommonsTag(GitScmLocator locator) {
@@ -103,26 +98,20 @@ class GitScmLocatorTest {
         final String repoUrl = gitRepoUri;
         {
             long t1 = System.currentTimeMillis();
-            final GitScmLocator locator = GitScmLocator.builder()
-                    .setRecipeRepos(List.of(repoUrl))
-                    .setGitCloneBaseDir(gitCloneDir)
-                    .build();
+            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl));
             assertCommonsTag(locator);
 
             log.infof("Lookup time with clonig: %d ms", (System.currentTimeMillis() - t1));
 
             assertThat(gitCloneDir).exists();
             assertThat(gitCloneDir.resolve(
-                    GitScmLocator.uriToFileName(repoUrl) + "/.git")).exists();
+                    RecipeGroupManager.uriToFileName(repoUrl) + "/.git")).exists();
         }
 
         // reuse the existing repo
         {
             long t1 = System.currentTimeMillis();
-            final GitScmLocator locator = GitScmLocator.builder()
-                    .setRecipeRepos(List.of(repoUrl))
-                    .setGitCloneBaseDir(gitCloneDir)
-                    .build();
+            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl));
             assertCommonsTag(locator);
             log.infof("Lookup time with fetch & reset: %d ms", (System.currentTimeMillis() - t1));
         }
@@ -144,16 +133,17 @@ class GitScmLocatorTest {
 
     @Test
     void uriToFileName() {
-        assertThat(GitScmLocator.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
+        assertThat(RecipeGroupManager.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
                 .isEqualTo("github.com-path-to-report.pdf-download-1-section");
-        assertThat(GitScmLocator.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
-        assertThat(GitScmLocator.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
+        assertThat(RecipeGroupManager.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
+        assertThat(RecipeGroupManager.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
                 .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(GitScmLocator.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
+        assertThat(RecipeGroupManager.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
                 .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(GitScmLocator.uriToFileName("git+ssh://git@github.com:owner/repo.git")).isEqualTo("github.com-owner-repo");
-        assertThat(GitScmLocator.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
-        assertThat(GitScmLocator.uriToFileName("git@github.com:quarkusio/quarkus.git"))
+        assertThat(RecipeGroupManager.uriToFileName("git+ssh://git@github.com:owner/repo.git"))
+                .isEqualTo("github.com-owner-repo");
+        assertThat(RecipeGroupManager.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
+        assertThat(RecipeGroupManager.uriToFileName("git@github.com:quarkusio/quarkus.git"))
                 .isEqualTo("github.com-quarkusio-quarkus");
     }
 

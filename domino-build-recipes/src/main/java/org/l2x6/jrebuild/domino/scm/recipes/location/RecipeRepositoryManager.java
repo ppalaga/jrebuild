@@ -5,7 +5,6 @@
 package org.l2x6.jrebuild.domino.scm.recipes.location;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystemException;
@@ -14,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,8 +25,6 @@ import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.merge.ContentMergeStrategy;
-import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.transport.FetchResult;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.util.GitCredentials;
@@ -50,27 +46,17 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     private final String remote;
     private final Path local;
     private final String branch;
-    private final Optional<Duration> updateInterval;
     private final RecipeLayoutManager recipeLayoutManager;
-    private volatile long lastUpdate = -1;
 
-    public RecipeRepositoryManager(Git git, String remote, Path local, String branch, Optional<Duration> updateInterval) {
+    public RecipeRepositoryManager(Git git, String remote, Path local, String branch) {
         this.git = git;
         this.remote = remote;
         this.local = local;
         this.branch = branch;
-        this.updateInterval = updateInterval;
-        this.lastUpdate = System.currentTimeMillis();
         this.recipeLayoutManager = new RecipeLayoutManager(local);
     }
 
-    public static RecipeDirectory create(String remote)
-            throws GitAPIException, IOException {
-        return create(remote, Optional.empty(), Files.createTempDirectory("recipe"));
-    }
-
-    public static RecipeDirectory create(String remote, Optional<Duration> updateInterval,
-            Path directory) throws GitAPIException, IOException {
+    public static RecipeDirectory create(String remote, Path directory) throws GitAPIException, IOException {
         // Allow cloning of another branch via <url>#<branch> format.
         String branch = "main";
         int b = remote.indexOf('#');
@@ -78,7 +64,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
             branch = remote.substring(b + 1);
             remote = remote.substring(0, b);
         }
-        return create(remote, branch, updateInterval, directory);
+        return create(remote, branch, directory);
     }
 
     private static AtomicInteger threadIndex = new AtomicInteger();
@@ -86,7 +72,6 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public static RecipeDirectory create(
             String remote,
             String branch,
-            Optional<Duration> updateInterval,
             Path directory) throws GitAPIException {
 
         final CompletableFuture<RecipeDirectory> delegate = new CompletableFuture<>();
@@ -108,25 +93,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
                             .setURI(remote)
                             .call();
                 }
-                delegate.complete(new RecipeRepositoryManager(git, remote, directory, branch, updateInterval));
+                delegate.complete(new RecipeRepositoryManager(git, remote, directory, branch));
             } catch (Exception e) {
                 delegate.completeExceptionally(e);
             }
         }, "git-fetch-" + threadIndex.incrementAndGet()).start();
         return new LazyRecipeDirectory(delegate);
-    }
-
-    public static RecipeDirectory createLocal(Path directory) throws GitAPIException {
-        log.infof("Opening local recipe repo %s", directory);
-        if (!Files.isDirectory(directory)) {
-            throw new IllegalArgumentException(directory + " is not a valid directory");
-        }
-        try {
-            var result = Git.open(directory.toFile());
-            return new RecipeRepositoryManager(result, null, directory, result.getRepository().getBranch(), Optional.empty());
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to open repository " + directory, e);
-        }
     }
 
     /**
@@ -138,62 +110,32 @@ public class RecipeRepositoryManager implements RecipeDirectory {
      * @return            The path match result
      */
     public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
-        doUpdate();
         return recipeLayoutManager.getArtifactPaths(groupId, artifactId, version);
     }
 
     @Override
     public Optional<Path> getBuildPaths(String scmUri, String version) {
-        doUpdate();
         return recipeLayoutManager.getBuildPaths(scmUri, version);
     }
 
     @Override
     public Optional<Path> getRepositoryPaths(String name) {
-        doUpdate();
         return recipeLayoutManager.getRepositoryPaths(name);
     }
 
     @Override
     public List<Path> getAllRepositoryPaths() {
-        doUpdate();
         return recipeLayoutManager.getAllRepositoryPaths();
     }
 
     @Override
     public Optional<Path> getBuildToolInfo(String name) {
-        doUpdate();
         return recipeLayoutManager.getBuildToolInfo(name);
     }
 
     @Override
     public Optional<Path> getDisabledPlugins(String tool) {
-        doUpdate();
         return recipeLayoutManager.getDisabledPlugins(tool);
-    }
-
-    @Override
-    public void update() {
-        try {
-            git.pull().setContentMergeStrategy(ContentMergeStrategy.THEIRS).setStrategy(MergeStrategy.THEIRS)
-                    .call();
-        } catch (GitAPIException e) {
-            throw new RuntimeException(e);
-        }
-        lastUpdate = System.currentTimeMillis();
-    }
-
-    private void doUpdate() {
-        if (updateInterval.isEmpty()) {
-            return;
-        }
-        if (lastUpdate + updateInterval.get().toMillis() < System.currentTimeMillis()) {
-            synchronized (this) {
-                if (lastUpdate + updateInterval.get().toMillis() < System.currentTimeMillis()) {
-                    update();
-                }
-            }
-        }
     }
 
     @Override
@@ -202,9 +144,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
                 ", remote='" + remote + '\'' +
                 ", local=" + local +
                 ", branch='" + branch + '\'' +
-                ", updateInterval=" + updateInterval +
                 ", recipeLayoutManager=" + recipeLayoutManager +
-                ", lastUpdate=" + lastUpdate +
                 '}';
     }
 
@@ -438,11 +378,6 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         @Override
         public Optional<Path> getDisabledPlugins(String tool) {
             return awaitRecipeDirectory().getDisabledPlugins(tool);
-        }
-
-        @Override
-        public void update() {
-            awaitRecipeDirectory().update();
         }
 
     }

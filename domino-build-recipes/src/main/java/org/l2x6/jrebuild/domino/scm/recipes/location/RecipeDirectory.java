@@ -39,8 +39,4 @@ public interface RecipeDirectory {
         throw new IllegalStateException("Not implemented");
     }
 
-    /**
-     * Updates to the latest version of the data
-     */
-    void update();
 }

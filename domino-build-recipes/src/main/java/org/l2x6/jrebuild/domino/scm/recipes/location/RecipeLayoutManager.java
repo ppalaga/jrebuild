@@ -63,31 +63,32 @@ public class RecipeLayoutManager implements RecipeDirectory {
      * Returns the directories that contain the recipe information for this specific artifact
      */
     public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
-        Path groupPath = scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
-        Path artifactFolder = groupPath.resolve(ARTIFACT);
-        Path artifactPath = artifactFolder.resolve(artifactId);
-        Path artifactAndVersionPath = null;
+        final Path groupFolder = scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
         if (log.isDebugEnabled()) {
-            log.debugf("Searching for recipe in %s", shortenPath(groupPath));
+            log.debugf("Searching for recipe in %s", shortenPath(groupFolder));
         }
-
-        if (Files.notExists(groupPath)) {
+        if (Files.notExists(groupFolder)) {
             return Optional.empty();
         }
+        final Path artifactFolder = groupFolder.resolve(ARTIFACT);
+        Path artifactPath = artifactFolder.resolve(artifactId);
+        final Path artifactAndVersionPath;
+
         boolean groupAuthoritative = true;
         if (Files.exists(artifactPath)) {
-            artifactAndVersionPath = resolveVersion(artifactPath, version).orElse(null);
+            artifactAndVersionPath = resolveVersion(artifactPath, version);
             groupAuthoritative = false;
         } else {
+            artifactAndVersionPath = null;
             artifactPath = null;
         }
-        Path versionPath = resolveVersion(groupPath, version).orElse(null);
+        Path versionPath = resolveVersion(groupFolder, version);
         if (versionPath != null) {
             groupAuthoritative = false;
         }
 
         return Optional
-                .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
+                .of(new RecipePathMatch(groupFolder, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
     }
 
     Path shortenPath(Path p) {
@@ -100,7 +101,8 @@ public class RecipeLayoutManager implements RecipeDirectory {
         if (!Files.exists(target)) {
             return Optional.empty();
         }
-        return Optional.of(resolveVersion(target, version).orElse(target));
+        Path v = resolveVersion(target, version);
+        return Optional.ofNullable(v != null ? v : target);
     }
 
     @Override
@@ -139,10 +141,15 @@ public class RecipeLayoutManager implements RecipeDirectory {
         return Files.isReadable(target) ? Optional.of(target) : Optional.empty();
     }
 
-    private Optional<Path> resolveVersion(Path target, String version) {
+    /**
+     * @param  target
+     * @param  version
+     * @return         an existing {@link Path} or {@code null} if no suitable path exists
+     */
+    private Path resolveVersion(Path target, String version) {
         Path versions = target.resolve(VERSION);
         if (!Files.exists(versions)) {
-            return Optional.empty();
+            return null;
         }
         ComparableVersion requestedVersion = new ComparableVersion(version);
         ComparableVersion currentVersion = null;
@@ -162,7 +169,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return Optional.ofNullable(currentPath);
+        return currentPath;
     }
 
     @Override
@@ -177,11 +184,6 @@ public class RecipeLayoutManager implements RecipeDirectory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public void update() {
-
     }
 
     @Override
