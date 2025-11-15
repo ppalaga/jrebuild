@@ -75,6 +75,13 @@ public record DependencyCollectorRequest(
             return this;
         }
 
+        public Builder additionalBoms(Gav... additionalBoms) {
+            for (Gav additionalBom : additionalBoms) {
+                this.additionalBoms.add(additionalBom);
+            }
+            return this;
+        }
+
         public Builder additionalBoms(Collection<Gav> additionalBoms) {
             this.additionalBoms.addAll(additionalBoms);
             return this;

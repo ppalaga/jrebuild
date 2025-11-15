@@ -119,17 +119,19 @@ public class DependencyCollectorTest {
 
     }
 
-
     @Test
     void additionalBoms() {
+        /* intermediary dependends on api 1.0.0
+         * but the external-bom:2.0.0 overrides it to 2.0.0 */
+
         Runtime runtime = org.l2x6.jrebuild.core.mima.JRebuildRuntime.getInstance();
         eu.maveniverse.maven.mima.context.ContextOverrides.Builder overrides = JrebuildTestUtils.testRepo();
         try (Context context = runtime.create(overrides.build())) {
             DependencyCollectorRequest re = DependencyCollectorRequest.builder()
-                    .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.external:jrebuild-external-project
-        <version>2.0.0</version>
-    </parent>
-    <artifactId>jrebuild-external-impl:jar"))
+                    .rootBom(Gav.of("org.l2x6.jrebuild.test-project:jrebuild-test-bom:0.0.1"))
+                    .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.external:jrebuild-external-impl:2.0.0"))
+                    .additionalBoms(Gav.of("org.l2x6.jrebuild.external:jrebuild-external-bom:2.0.0"))
+                    .includeParentsAndImports(false)
                     .build();
             List<String> trees = DependencyCollector.collect(context, re)
                     .sorted()
@@ -138,21 +140,16 @@ public class DependencyCollectorTest {
                     .collect(Collectors.toList());
             String[] expected = {
                     """
-                            org.l2x6.jrebuild.test-project:jrebuild-test-build-child:0.0.1:jar
-                            +- org.l2x6.jrebuild.test-project:jrebuild-test-build-parent:0.0.1:pom
-                            |  +- org.l2x6.jrebuild.test-project:jrebuild-test-project:0.0.1:pom
-                            |  `- org.l2x6.jrebuild.test-project:jrebuild-test-bom:0.0.1:pom
-                            |     +- org.l2x6.jrebuild.test-project:jrebuild-test-project:0.0.1:pom
-                            |     `- org.l2x6.jrebuild.test-project:jrebuild-test-imported-bom:0.0.1:pom
-                            |        `- org.l2x6.jrebuild.test-project:jrebuild-test-project:0.0.1:pom
-                            `- org.l2x6.jrebuild.test-project:jrebuild-test-api:0.0.1:jar
-                               `- org.l2x6.jrebuild.test-project:jrebuild-test-project:0.0.1:pom
+                            org.l2x6.jrebuild.external:jrebuild-external-impl:2.0.0
+                            `- org.l2x6.jrebuild.external:jrebuild-external-intermediary:2.0.0:jar
+                               `- org.l2x6.jrebuild.external:jrebuild-external-api:2.0.0:jar
                             """
             };
             Assertions.assertThat(trees).containsExactly(expected);
         }
 
     }
+
     private void assertDependencies(String snapshot, Consumer<Builder> customizeRequestBuilder, String... expected) {
         Runtime runtime = org.l2x6.jrebuild.core.mima.JRebuildRuntime.getInstance();
         eu.maveniverse.maven.mima.context.ContextOverrides.Builder overrides = JrebuildTestUtils.testRepo();
