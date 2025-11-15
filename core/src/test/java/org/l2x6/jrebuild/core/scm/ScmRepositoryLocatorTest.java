@@ -7,7 +7,10 @@ package org.l2x6.jrebuild.core.scm;
 import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.context.ContextOverrides;
 import eu.maveniverse.maven.mima.context.Runtime;
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
@@ -28,6 +31,8 @@ public class ScmRepositoryLocatorTest {
 
     @Test
     void scm() {
+        Path gitRepoCloneDir = Path.of("target/git-recipes-clone-" + UUID.randomUUID()).toAbsolutePath();
+
         Runtime runtime = JRebuildRuntime.getInstance();
         ContextOverrides.Builder overrides = JrebuildTestUtils.testRepo();
         try (Context context = runtime.create(overrides.build())) {
@@ -37,7 +42,9 @@ public class ScmRepositoryLocatorTest {
                     .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.test-project:jrebuild-test-impl:0.0.1"));
             DependencyCollectorRequest re = builder.build();
             final ScmRepositoryService locator = ScmRepositoryService.create(
-                    context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel);
+                    context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel,
+                    gitRepoCloneDir,
+                    Collections.emptyList());
             List<String> trees = DependencyCollector.collect(context, re)
                     .map(resolvedArtifact -> {
                         ScmInfoNode rootScmInfoNode = locator.newVisitor().walk(resolvedArtifact).rootNode();

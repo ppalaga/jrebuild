@@ -4,6 +4,7 @@
  */
 package org.l2x6.jrebuild.core.scm;
 
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -19,6 +20,7 @@ import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode;
 import org.l2x6.jrebuild.core.tree.Node;
 import org.l2x6.jrebuild.core.tree.Visitor;
+import org.l2x6.jrebuild.domino.scm.DominoBuildRecipesScmLocator;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -28,8 +30,11 @@ public class ScmRepositoryService implements ScmLocator {
     private final List<ScmLocator> scmLocators;
 
     public static ScmRepositoryService create(
-            Function<Gav, Model> getEffectiveModel) {
+            Function<Gav, Model> getEffectiveModel,
+            Path cloneDirectory,
+            List<String> dominoRecipeUrls) {
         return new ScmRepositoryService(List.of(
+                new DominoBuildRecipesScmLocator(cloneDirectory, dominoRecipeUrls),
                 new PomScmLocator(getEffectiveModel)));
     }
 

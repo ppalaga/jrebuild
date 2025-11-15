@@ -18,7 +18,7 @@ import org.l2x6.pom.tuner.model.Gav;
 public class DominoBuildRecipesScmLocator implements ScmLocator {
     private final GitScmLocator delegate;
 
-    DominoBuildRecipesScmLocator(Path cloneDir, List<String> recipeUris) {
+    public DominoBuildRecipesScmLocator(Path cloneDir, List<String> recipeUris) {
         super();
         this.delegate = new GitScmLocator(cloneDir, recipeUris);
     }
@@ -26,6 +26,9 @@ public class DominoBuildRecipesScmLocator implements ScmLocator {
     @Override
     public ScmRef locate(Gav gav) {
         TagInfo tagInfo = delegate.resolveTagInfo(gav);
+        if (tagInfo == null) {
+            return null;
+        }
         RepositoryInfo repoInfo = tagInfo.getRepoInfo();
         return new ScmRef(tagInfo.getTag(), Kind.TAG, new ScmRepository(repoInfo.getType(), repoInfo.getUriWithoutFragment()));
     }

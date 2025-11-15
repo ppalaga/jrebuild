@@ -132,6 +132,11 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.l2x6.jrebuild</groupId>
+                <artifactId>jrebuild-domino-build-recipes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>eu.maveniverse.maven.mima</groupId>
                 <artifactId>context</artifactId>
                 <version>${mima.version}</version>
@@ -287,6 +292,17 @@
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
                         <systemPropertyVariables>
+                            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         </systemPropertyVariables>
                     </configuration>
