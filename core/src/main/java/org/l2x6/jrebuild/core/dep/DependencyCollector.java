@@ -7,11 +7,13 @@ package org.l2x6.jrebuild.core.dep;
 import eu.maveniverse.maven.mima.context.Context;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
@@ -19,10 +21,12 @@ import org.apache.maven.model.Model;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.graph.DependencyVisitor;
+import org.eclipse.aether.graph.Exclusion;
 import org.eclipse.aether.util.graph.selector.AndDependencySelector;
 import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
 import org.eclipse.aether.util.graph.selector.ScopeDependencySelector;
@@ -35,6 +39,14 @@ public class DependencyCollector {
 
     public static Stream<ResolvedArtifactNode> collect(Context context, DependencyCollectorRequest request) {
 
+        final CachingMavenModelReader modelReader = context.lookup().lookup(CachingMavenModelReader.class).get();
+        final List<org.eclipse.aether.graph.Dependency> constraints = new ArrayList<>();
+        final Gav rootBom = request.rootBom();
+        if (rootBom != null) {
+            collectConstraints(rootBom, modelReader, constraints::add);
+        }
+        request.additionalBoms().forEach(additionalBom -> collectConstraints(additionalBom, modelReader, constraints::add));
+
         return request.rootArtifacts().parallelStream()
                 .map(rootGavtc -> {
 
@@ -42,7 +54,8 @@ public class DependencyCollector {
 
                     org.eclipse.aether.graph.Dependency dependency = new org.eclipse.aether.graph.Dependency(rootArtifact,
                             "runtime");
-                    CollectRequest collectRequest = new CollectRequest(dependency, context.remoteRepositories());
+                    final CollectRequest collectRequest = new CollectRequest(dependency, context.remoteRepositories());
+                    collectRequest.setManagedDependencies(constraints);
 
                     RepositorySystemSession repoSession = context.repositorySystemSession();
                     if (request.includeOptionalDependencies()) {
@@ -59,7 +72,7 @@ public class DependencyCollector {
                         ResolvedArtifactNodeVisitor v = new ResolvedArtifactNodeVisitor(
                                 request.includeParentsAndImports()
                                         ? new ParentsAndImportsResolver(
-                                                context.lookup().lookup(CachingMavenModelReader.class).get())
+                                                modelReader)
                                         : (a, r) -> {
                                         });
                         rootNode.accept(v);
@@ -68,6 +81,34 @@ public class DependencyCollector {
                         throw new RuntimeException("Could not resolve " + rootGavtc);
                     }
                 });
+    }
+
+    private static void collectConstraints(
+            Gav rootBom,
+            CachingMavenModelReader modelReader,
+            Consumer<org.eclipse.aether.graph.Dependency> add) {
+        Model m = modelReader.readEffectiveModel(rootBom);
+        ManagedGavsSelector.getManagedDependencies(m).stream()
+                .map(d -> {
+                    Artifact a = new DefaultArtifact(
+                            d.getGroupId(),
+                            d.getArtifactId(),
+                            d.getClassifier(),
+                            d.getType(),
+                            d.getVersion());
+                    List<org.apache.maven.model.Exclusion> mavenExclusions = d.getExclusions();
+                    Collection<Exclusion> exclusions = mavenExclusions == null || mavenExclusions.isEmpty()
+                            ? null
+                            : mavenExclusions.stream()
+                                    .map(e -> new Exclusion(e.getGroupId(), e.getArtifactId(), null, null))
+                                    .collect(Collectors.toList());
+                    return new org.eclipse.aether.graph.Dependency(
+                            a,
+                            d.getScope(),
+                            Boolean.parseBoolean(d.getOptional()),
+                            exclusions);
+                })
+                .forEach(add);
     }
 
     static class ParentsAndImportsResolver implements BiConsumer<Artifact, Consumer<ResolvedArtifactNode>> {

@@ -28,17 +28,22 @@ public class ManagedGavsSelector {
     public Set<Gavtc> select(Gav bom, GavtcsSet filters) {
 
         final Model model = getEffectiveModel.apply(bom);
+        final List<Dependency> deps = getManagedDependencies(model);
+        if (deps != null && !deps.isEmpty()) {
+            return Collections.unmodifiableSet(deps.stream()
+                    .map(JrebuildUtils::toGavtc)
+                    .filter(filters::contains)
+                    .collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
+        }
+        return Collections.emptySet();
+    }
 
+    public static List<Dependency> getManagedDependencies(Model model) {
         final DependencyManagement dependencyManagement = model.getDependencyManagement();
         if (dependencyManagement != null) {
             final List<Dependency> deps = dependencyManagement.getDependencies();
-            if (deps != null && !deps.isEmpty()) {
-                return Collections.unmodifiableSet(deps.stream()
-                        .map(JrebuildUtils::toGavtc)
-                        .filter(filters::contains)
-                        .collect(Collectors.<Gavtc, Set<Gavtc>> toCollection(LinkedHashSet::new)));
-            }
+            return deps == null ? Collections.emptyList() : deps;
         }
-        return Collections.emptySet();
+        return Collections.emptyList();
     }
 }
