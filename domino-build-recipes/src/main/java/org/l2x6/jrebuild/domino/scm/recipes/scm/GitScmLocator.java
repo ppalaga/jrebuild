@@ -17,12 +17,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
+import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeFile;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
 import org.l2x6.jrebuild.domino.scm.recipes.util.GitCredentials;
 import org.l2x6.pom.tuner.model.Gav;
@@ -48,34 +48,25 @@ public class GitScmLocator implements ScmLocator {
 
         log.tracef("Looking up %s", toBuild);
 
-        //look for SCM info
-        List<Path> recipes = recipeGroupManager
+        final RecipeFile recipe = recipeGroupManager
                 .lookupScmInformation(toBuild);
-        if (log.isDebugEnabled()) {
-            log.tracef(
-                    "Build info files found for %s: %s",
-                    toBuild,
-                    recipes.stream()
-                            .map(gitCloneBaseDir::relativize)
-                            .map(Path::toString)
-                            .collect(Collectors.joining(", ")));
+        log.tracef("Found recipe for %s: %s", toBuild, recipe);
+        if (recipe == null) {
+            return null;
         }
-
         List<RepositoryInfo> repos = new ArrayList<>();
         List<TagMapping> allMappings = new ArrayList<>();
-        for (Path recipe : recipes) {
-            ScmInfo main;
-            try {
-                main = BuildRecipe.SCM.getHandler().parse(recipe);
-            } catch (IOException e) {
-                throw new UncheckedIOException("Failed to parse " + recipe, e);
-            }
-            repos.add(main);
-            allMappings.addAll(main.getTagMapping());
-            for (var j : main.getLegacyRepos()) {
-                repos.add(j);
-                allMappings.addAll(j.getTagMapping());
-            }
+        ScmInfo main;
+        try {
+            main = BuildRecipe.SCM.getHandler().parse(recipe.recipeFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to parse " + recipe, e);
+        }
+        repos.add(main);
+        allMappings.addAll(main.getTagMapping());
+        for (var j : main.getLegacyRepos()) {
+            repos.add(j);
+            allMappings.addAll(j.getTagMapping());
         }
 
         RuntimeException firstFailure = null;

@@ -13,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -28,6 +26,7 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.FetchResult;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.domino.scm.recipes.util.GitCredentials;
+import org.l2x6.pom.tuner.model.Gav;
 
 /**
  * A recipe database stored in git.
@@ -42,19 +41,19 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public static final String DISABLED_PLUGINS = "disabled-plugins";
     private static final String DOMINO_WORKING_BRANCH = "domino-working-branch";
 
+    private static AtomicInteger threadIndex = new AtomicInteger();
+
+    private static final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+
+    private static final long DELETE_RETRY_MILLIS = 5000L;
+
+    private static final int CREATE_RETRY_COUNT = 256;
+
     private final Git git;
     private final String remote;
     private final Path local;
     private final String branch;
     private final RecipeLayoutManager recipeLayoutManager;
-
-    public RecipeRepositoryManager(Git git, String remote, Path local, String branch) {
-        this.git = git;
-        this.remote = remote;
-        this.local = local;
-        this.branch = branch;
-        this.recipeLayoutManager = new RecipeLayoutManager(local);
-    }
 
     public static RecipeDirectory create(String remote, Path directory) throws GitAPIException, IOException {
         // Allow cloning of another branch via <url>#<branch> format.
@@ -66,8 +65,6 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         }
         return create(remote, branch, directory);
     }
-
-    private static AtomicInteger threadIndex = new AtomicInteger();
 
     public static RecipeDirectory create(
             String remote,
@@ -101,6 +98,14 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         return new LazyRecipeDirectory(delegate);
     }
 
+    public RecipeRepositoryManager(Git git, String remote, Path local, String branch) {
+        this.git = git;
+        this.remote = remote;
+        this.local = local;
+        this.branch = branch;
+        this.recipeLayoutManager = new RecipeLayoutManager(local);
+    }
+
     /**
      * Returns the directories that contain the recipe information for this specific artifact
      *
@@ -109,33 +114,9 @@ public class RecipeRepositoryManager implements RecipeDirectory {
      * @param  version    The version
      * @return            The path match result
      */
-    public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
-        return recipeLayoutManager.getArtifactPaths(groupId, artifactId, version);
-    }
-
     @Override
-    public Optional<Path> getBuildPaths(String scmUri, String version) {
-        return recipeLayoutManager.getBuildPaths(scmUri, version);
-    }
-
-    @Override
-    public Optional<Path> getRepositoryPaths(String name) {
-        return recipeLayoutManager.getRepositoryPaths(name);
-    }
-
-    @Override
-    public List<Path> getAllRepositoryPaths() {
-        return recipeLayoutManager.getAllRepositoryPaths();
-    }
-
-    @Override
-    public Optional<Path> getBuildToolInfo(String name) {
-        return recipeLayoutManager.getBuildToolInfo(name);
-    }
-
-    @Override
-    public Optional<Path> getDisabledPlugins(String tool) {
-        return recipeLayoutManager.getDisabledPlugins(tool);
+    public RecipeFile lookup(Gav gav) {
+        return recipeLayoutManager.lookup(gav);
     }
 
     @Override
@@ -213,10 +194,6 @@ public class RecipeRepositoryManager implements RecipeDirectory {
             config.save();
         }
     }
-
-    private static final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-    private static final long DELETE_RETRY_MILLIS = 5000L;
-    private static final int CREATE_RETRY_COUNT = 256;
 
     /**
      * If the given directory does not exist, creates it using {@link #ensureDirectoryExists(Path)}. Otherwise
@@ -351,33 +328,8 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         }
 
         @Override
-        public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
-            return awaitRecipeDirectory().getArtifactPaths(groupId, artifactId, version);
-        }
-
-        @Override
-        public Optional<Path> getBuildPaths(String scmUri, String version) {
-            return awaitRecipeDirectory().getBuildPaths(scmUri, version);
-        }
-
-        @Override
-        public Optional<Path> getRepositoryPaths(String name) {
-            return awaitRecipeDirectory().getRepositoryPaths(name);
-        }
-
-        @Override
-        public Optional<Path> getBuildToolInfo(String name) {
-            return awaitRecipeDirectory().getBuildToolInfo(name);
-        }
-
-        @Override
-        public List<Path> getAllRepositoryPaths() {
-            return awaitRecipeDirectory().getAllRepositoryPaths();
-        }
-
-        @Override
-        public Optional<Path> getDisabledPlugins(String tool) {
-            return awaitRecipeDirectory().getDisabledPlugins(tool);
+        public RecipeFile lookup(Gav gav) {
+            return awaitRecipeDirectory().lookup(gav);
         }
 
     }

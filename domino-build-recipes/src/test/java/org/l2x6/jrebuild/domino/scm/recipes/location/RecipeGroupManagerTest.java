@@ -8,13 +8,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
-import org.l2x6.jrebuild.domino.scm.recipes.build.BuildRecipeInfo;
 import org.l2x6.jrebuild.domino.scm.recipes.scm.ScmInfo;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -33,12 +30,12 @@ public class RecipeGroupManagerTest {
         Gav req = new Gav("io.quarkus", "quarkus-core", "1.0");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
 
         req = new Gav("io.quarkus.security", "quarkus-security", "1.0");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
@@ -46,11 +43,11 @@ public class RecipeGroupManagerTest {
         Gav req = new Gav("io.quarkus", "quarkus-core", "1.0-alpha1");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
         req = new Gav("io.quarkus", "quarkus-core", "0.9");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
@@ -58,7 +55,7 @@ public class RecipeGroupManagerTest {
         Gav req = new Gav("io.quarkus", "quarkus-gizmo", "1.0");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
@@ -66,69 +63,33 @@ public class RecipeGroupManagerTest {
         Gav req = new Gav("io.quarkus", "quarkus-gizmo", "1.0-alpha1");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
         req = new Gav("io.quarkus", "quarkus-gizmo", "0.9");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
     public void testNoGroupLevelBuild() {
         Gav req = new Gav("io.vertx", "not-real", "1.0");
         var result = manager.lookupScmInformation(req);
-        Assertions.assertTrue(result.isEmpty());
-    }
-
-    @Test
-    public void testBuildInfoRecipe() throws IOException {
-        var result = manager.requestBuildInformation(
-                new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "2.0", Set.of(BuildRecipe.BUILD)));
-        Assertions.assertEquals(List.of("-DskipDocs=true"),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
-        Assertions.assertEquals(List.of(".:.*-javadoc\\.jar:.*"),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
-        result = manager.requestBuildInformation(
-                new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "1.0", Set.of(BuildRecipe.BUILD)));
-        Assertions.assertEquals(List.of("-Dquarkus1=true"),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
-        Assertions.assertEquals(List.of(".:.*-sources\\.jar:.*"),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
-        result = manager.requestBuildInformation(
-                new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "0.1", Set.of(BuildRecipe.BUILD)));
-        Assertions.assertEquals(List.of(),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
-        Assertions.assertEquals(List.of(),
-                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
-    }
-
-    @Test
-    public void testBuildInfoRecipeAdditional() throws IOException {
-        BuildInfoResponse result = manager.requestBuildInformation(
-                new BuildInfoRequest("https://github.com/lz4/lz4-java.git", "1.0", Set.of(BuildRecipe.BUILD)));
-
-        BuildRecipeInfo recipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
-        Map<String, BuildRecipeInfo> recipeInfoMap = recipeInfo.getAdditionalBuilds();
-
-        Assertions.assertEquals(List.of("-Dlz4-pure-java=true"),
-                recipeInfoMap.get("pureJava").getAdditionalArgs());
-        Assertions.assertTrue(recipeInfoMap.get("pureJava").isEnforceVersion());
-        Assertions.assertTrue(recipeInfoMap.get("pureJava").getPreBuildScript().startsWith("sed -i"));
+        Assertions.assertNull(result);
     }
 
     @Test
     public void testArtifactLZ4()
             throws IOException {
         Gav req = new Gav("org.lz4", "lz4", "1.8.0");
-        List<Path> scmLookup = manager.lookupScmInformation(req);
-        var result = BuildRecipe.SCM.getHandler().parse(scmLookup.get(0));
+        RecipeFile scmLookup = manager.lookupScmInformation(req);
+        var result = BuildRecipe.SCM.getHandler().parse(scmLookup.recipeFile());
 
         Assertions.assertNull(result.getBuildNameFragment());
         Assertions.assertEquals("https://github.com/lz4/lz4-java.git", result.getUri());
 
         req = new Gav("org.lz4", "lz4-pure-java", "1.8.0");
         scmLookup = manager.lookupScmInformation(req);
-        result = BuildRecipe.SCM.getHandler().parse(scmLookup.get(0));
+        result = BuildRecipe.SCM.getHandler().parse(scmLookup.recipeFile());
 
         Assertions.assertEquals("pureJava", result.getBuildNameFragment());
         Assertions.assertEquals("https://github.com/lz4/lz4-java.git", result.getUriWithoutFragment());

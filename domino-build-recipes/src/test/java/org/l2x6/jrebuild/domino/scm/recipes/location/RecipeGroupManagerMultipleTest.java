@@ -28,28 +28,26 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testGroupIdBasedRecipe() throws IOException {
         Gav req = new Gav("io.test", "test", "1.0");
-        var result = manager.lookupScmInformation(req);
+        RecipeFile result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/test-override/test.git",
-                readScmUrl(result.get(0)));
-        Assertions.assertEquals("https://github.com/test/test.git",
-                readScmUrl(result.get(1)));
+                readScmUrl(result.recipeFile()));
 
         Assertions.assertTrue(
-                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
+                BuildRecipe.SCM.getHandler().parse(result.recipeFile()).isPrivateRepo());
 
         req = new Gav("io.test.acme", "test-acme", "1.0");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/test-override/test-acme.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
         Assertions.assertFalse(
-                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
+                BuildRecipe.SCM.getHandler().parse(result.recipeFile()).isPrivateRepo());
 
         req = new Gav("io.foo", "test-foo", "1.0");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/foo/foo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
         Assertions.assertFalse(
-                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
+                BuildRecipe.SCM.getHandler().parse(result.recipeFile()).isPrivateRepo());
     }
 
     @Test
@@ -58,13 +56,13 @@ public class RecipeGroupManagerMultipleTest {
         Gav req = new Gav("io.quarkus", "quarkus-core", "1.0-alpha1");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
 
         //but now we have added a new one as well
         req = new Gav("io.quarkus", "quarkus-core", "1.0-alpha2");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
@@ -73,12 +71,12 @@ public class RecipeGroupManagerMultipleTest {
         Gav req = new Gav("io.quarkus", "quarkus-gizmo", "1.0");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
 
         req = new Gav("io.test", "test-gizmo", "1.0");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/test/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
@@ -87,24 +85,24 @@ public class RecipeGroupManagerMultipleTest {
         Gav req = new Gav("io.quarkus", "quarkus-gizmo", "1.0-alpha1");
         var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
 
         req = new Gav("io.test", "test-gizmo", "1.0-alpha1");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
 
         req = new Gav("io.test", "test-gizmo", "0.9");
         result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.get(0)));
+                readScmUrl(result.recipeFile()));
     }
 
     @Test
     public void testNoGroupLevelBuild() {
         Gav req = new Gav("io.vertx", "not-real", "1.0");
         var result = manager.lookupScmInformation(req);
-        Assertions.assertTrue(result.isEmpty());
+        Assertions.assertNull(result);
     }
 
     private String readScmUrl(Path scmPath) {
