@@ -59,7 +59,7 @@ public class AnalyzeCommand implements Runnable {
     boolean includeParentsAndImports;
 
     @CommandLine.Option(names = {
-            "--additional-boms" }, description = "A list of groupId:artifactId:version whose constraints should enforced in addition to the main BOM specified through --bom", split = ",")
+            "--additional-boms" }, description = "A list of groupId:artifactId:version whose constraints should enforced in addition to the main BOM specified through --bom", converter = GavConverter.class, split = ",")
     List<Gav> additionalBoms = List.of();
 
     @CommandLine.Option(names = {
