@@ -47,7 +47,7 @@ public class AnalyzeCommand implements Runnable {
     List<GavtcsPattern> excludes = List.of();
 
     @CommandLine.Option(names = {
-            "--root-artifacts" }, description = "Root artifacts whose dependencies should be processed", split = ",")
+            "--root-artifacts" }, description = "Root artifacts whose dependencies should be processed", converter = GavtcConverter.class, split = ",")
     List<Gavtc> rootArtifacts = List.of();
 
     @CommandLine.Option(names = {
@@ -129,6 +129,12 @@ public class AnalyzeCommand implements Runnable {
     static class GavConverter implements ITypeConverter<Gav> {
         public Gav convert(String value) throws Exception {
             return Gav.of(value);
+        }
+    }
+
+    static class GavtcConverter implements ITypeConverter<Gavtc> {
+        public Gavtc convert(String value) throws Exception {
+            return Gavtc.of(value);
         }
     }
 
