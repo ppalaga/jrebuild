@@ -22,6 +22,8 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -67,9 +69,12 @@ class GitScmLocatorTest {
 
     }
 
+    static final RemoteScmLookup scmLookup = new MutableRemoteScmLookup().put("https://github.com/apache/commons-lang.git",
+            Map.of("LANG_2_5", "deabeef"));
+
     @Test
     void lookupScmInfoRelaxNG() {
-        TagInfo tag = new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri))
+        TagInfo tag = new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri), new MutableRemoteScmLookup())
                 .resolveTagInfo(Gav.of("relaxngDatatype:relaxngDatatype:20020414"));
         Assertions.assertNotNull(tag);
         Assertions.assertEquals(tag.getTag(), tag.getHash());
@@ -79,7 +84,8 @@ class GitScmLocatorTest {
 
     @Test
     void lookupScmInfoCommonsLang() {
-        assertCommonsTag(new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri)));
+        ;
+        assertCommonsTag(new GitScmLocator(gitRepoCloneDir, List.of(gitRepoUri), scmLookup));
     }
 
     private void assertCommonsTag(GitScmLocator locator) {
@@ -98,7 +104,7 @@ class GitScmLocatorTest {
         final String repoUrl = gitRepoUri;
         {
             long t1 = System.currentTimeMillis();
-            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl));
+            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl), scmLookup);
             assertCommonsTag(locator);
 
             log.infof("Lookup time with clonig: %d ms", (System.currentTimeMillis() - t1));
@@ -111,7 +117,7 @@ class GitScmLocatorTest {
         // reuse the existing repo
         {
             long t1 = System.currentTimeMillis();
-            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl));
+            final GitScmLocator locator = new GitScmLocator(gitCloneDir, List.of(repoUrl), scmLookup);
             assertCommonsTag(locator);
             log.infof("Lookup time with fetch & reset: %d ms", (System.currentTimeMillis() - t1));
         }
@@ -160,4 +166,5 @@ class GitScmLocatorTest {
             GitScmLocator.runTagHeuristic(version, tagMap);
         });
     }
+
 }

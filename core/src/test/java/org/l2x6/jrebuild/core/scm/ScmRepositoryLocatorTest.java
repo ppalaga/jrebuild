@@ -10,11 +10,13 @@ import eu.maveniverse.maven.mima.context.Runtime;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
@@ -43,6 +45,7 @@ public class ScmRepositoryLocatorTest {
             DependencyCollectorRequest re = builder.build();
             final ScmRepositoryService locator = ScmRepositoryService.create(
                     context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel,
+                    new MutableRemoteScmLookup().put("https://github.com/l2x6/jrebuild-test", Map.of("0.0.1", "deadbeef")),
                     gitRepoCloneDir,
                     Collections.emptyList());
             List<String> trees = DependencyCollector.collect(context, re)
@@ -54,8 +57,8 @@ public class ScmRepositoryLocatorTest {
                     .collect(Collectors.toList());
             Assertions.assertThat(trees).containsExactly(
                     """
-                            https://github.com/l2x6/jrebuild-test#0.0.1 [org.l2x6.jrebuild.test-project:*:0.0.1]
-                            `- https://github.com/l2x6/jrebuild-test-transitive#0.0.1 [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
+                            https://github.com/l2x6/jrebuild-test#0.0.1@deadbeef [org.l2x6.jrebuild.test-project:*:0.0.1]
+                            `- https://github.com/l2x6/jrebuild-test-transitive#unknown-for-version-0.0.1@null [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
                             """);
         }
     }

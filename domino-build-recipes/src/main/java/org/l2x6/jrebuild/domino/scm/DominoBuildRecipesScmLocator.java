@@ -6,6 +6,8 @@ package org.l2x6.jrebuild.domino.scm;
 
 import java.nio.file.Path;
 import java.util.List;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
@@ -18,19 +20,20 @@ import org.l2x6.pom.tuner.model.Gav;
 public class DominoBuildRecipesScmLocator implements ScmLocator {
     private final GitScmLocator delegate;
 
-    public DominoBuildRecipesScmLocator(Path cloneDir, List<String> recipeUris) {
+    public DominoBuildRecipesScmLocator(Path cloneDir, List<String> recipeUris, RemoteScmLookup scmLookup) {
         super();
-        this.delegate = new GitScmLocator(cloneDir, recipeUris);
+        this.delegate = new GitScmLocator(cloneDir, recipeUris, scmLookup);
     }
 
     @Override
-    public ScmRef locate(Gav gav) {
+    public FqScmRef locate(Gav gav) {
         TagInfo tagInfo = delegate.resolveTagInfo(gav);
         if (tagInfo == null) {
             return null;
         }
         RepositoryInfo repoInfo = tagInfo.getRepoInfo();
-        return new ScmRef(tagInfo.getTag(), Kind.TAG, new ScmRepository(repoInfo.getType(), repoInfo.getUriWithoutFragment()));
+        return new FqScmRef(new ScmRef(Kind.TAG, tagInfo.getTag(), tagInfo.getHash()),
+                new ScmRepository(repoInfo.getType(), repoInfo.getUriWithoutFragment()));
     }
 
 }

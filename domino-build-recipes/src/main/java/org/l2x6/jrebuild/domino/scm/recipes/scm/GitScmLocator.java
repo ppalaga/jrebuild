@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +15,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
+import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeFile;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
-import org.l2x6.jrebuild.domino.scm.recipes.util.GitCredentials;
 import org.l2x6.pom.tuner.model.Gav;
 
 public class GitScmLocator implements ScmLocator {
@@ -33,14 +29,13 @@ public class GitScmLocator implements ScmLocator {
 
     private static final Pattern NUMERIC_PART = Pattern.compile("(\\d+)(\\.\\d+)+");
 
-    private final Map<String, Map<String, String>> repoTagsToHash;
-    private final Path gitCloneBaseDir;
+    private final RemoteScmLookup scmLookup;
 
     private final RecipeGroupManager recipeGroupManager;
 
-    public GitScmLocator(Path gitCloneBaseDir, List<String> recipeRepos) {
-        this.repoTagsToHash = new HashMap<>();
-        this.gitCloneBaseDir = Objects.requireNonNull(gitCloneBaseDir, "gitCloneBaseDir");
+    public GitScmLocator(Path gitCloneBaseDir, List<String> recipeRepos, RemoteScmLookup scmLookup) {
+        Objects.requireNonNull(gitCloneBaseDir, "gitCloneBaseDir");
+        this.scmLookup = scmLookup;
         this.recipeGroupManager = RecipeGroupManager.of(gitCloneBaseDir, recipeRepos);
     }
 
@@ -72,7 +67,7 @@ public class GitScmLocator implements ScmLocator {
 
             //now look for a tag
             try {
-                final Map<String, String> tagsToHash = getTagToHashMap(parsedInfo);
+                final Map<String, String> tagsToHash = scmLookup.getRefs(parsedInfo.getUriWithoutFragment(), Kind.TAG);
 
                 String version = toBuild.getVersion();
                 String underscoreVersion = version.replace(".", "_");
@@ -199,29 +194,5 @@ public class GitScmLocator implements ScmLocator {
             }
         }
         return selectedTag;
-    }
-
-    private Map<String, String> getTagToHashMap(RepositoryInfo repo) {
-        return repoTagsToHash.computeIfAbsent(repo.getUriWithoutFragment(), k -> getTagToHashMapFromGit(k));
-    }
-
-    private static Map<String, String> getTagToHashMapFromGit(String uriWithoutFragment) {
-        Map<String, String> tagsToHash;
-        final Collection<Ref> tags;
-        try {
-            tags = Git.lsRemoteRepository()
-                    .setCredentialsProvider(
-                            new GitCredentials())
-                    .setRemote(uriWithoutFragment).setTags(true).setHeads(false).call();
-        } catch (GitAPIException e) {
-            throw new RuntimeException("Failed to obtain a list of tags from " + uriWithoutFragment, e);
-        }
-        tagsToHash = new HashMap<>(tags.size());
-        for (var tag : tags) {
-            var name = tag.getName().replace("refs/tags/", "");
-            tagsToHash.put(name, tag.getPeeledObjectId() == null ? tag.getObjectId().name() : tag.getPeeledObjectId().name());
-        }
-
-        return tagsToHash;
     }
 }

@@ -14,8 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.maven.model.Model;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
-import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode;
 import org.l2x6.jrebuild.core.tree.Node;
@@ -26,16 +27,17 @@ import org.l2x6.pom.tuner.model.Gavtc;
 
 public class ScmRepositoryService implements ScmLocator {
 
-    private final Map<Gav, ScmRef> cachedScmInfos = new ConcurrentHashMap<>();
+    private final Map<Gav, FqScmRef> cachedScmInfos = new ConcurrentHashMap<>();
     private final List<ScmLocator> scmLocators;
 
     public static ScmRepositoryService create(
             Function<Gav, Model> getEffectiveModel,
+            RemoteScmLookup remoteScm,
             Path cloneDirectory,
             List<String> dominoRecipeUrls) {
         return new ScmRepositoryService(List.of(
-                new DominoBuildRecipesScmLocator(cloneDirectory, dominoRecipeUrls),
-                new PomScmLocator(getEffectiveModel),
+                new DominoBuildRecipesScmLocator(cloneDirectory, dominoRecipeUrls, remoteScm),
+                new PomScmLocator(getEffectiveModel, remoteScm),
                 new TerminalScmLocator()));
     }
 
@@ -45,9 +47,9 @@ public class ScmRepositoryService implements ScmLocator {
     }
 
     @Override
-    public ScmRef locate(Gav gav) {
+    public FqScmRef locate(Gav gav) {
         return cachedScmInfos.computeIfAbsent(gav, k -> {
-            ScmRef scmRef;
+            FqScmRef scmRef;
             for (ScmLocator scmLocator : scmLocators) {
                 if ((scmRef = scmLocator.locate(gav)) != null) {
                     return scmRef;
@@ -70,7 +72,7 @@ public class ScmRepositoryService implements ScmLocator {
         public boolean enter(ResolvedArtifactNode node) {
             Gavtc gavtc = node.gavtc();
             Gav gav = gavtc.toGav();
-            ScmRef scmRef = locate(gav);
+            FqScmRef scmRef = locate(gav);
             if (stack.isEmpty()) {
                 ScmInfoNode newNode = new ScmInfoNode(BuildGroup.mutable(scmRef, gavtc));
                 stack.push(newNode);
@@ -139,8 +141,8 @@ public class ScmRepositoryService implements ScmLocator {
     static class TerminalScmLocator implements ScmLocator {
 
         @Override
-        public ScmRef locate(Gav gav) {
-            return ScmRef.createUnknown(gav);
+        public FqScmRef locate(Gav gav) {
+            return FqScmRef.createUnknown(gav);
         }
     }
 }

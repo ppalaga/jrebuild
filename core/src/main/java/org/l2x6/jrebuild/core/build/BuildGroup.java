@@ -8,14 +8,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import org.l2x6.jrebuild.api.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
 public record BuildGroup(
-        ScmRef scmRef,
+        FqScmRef scmRef,
         Set<Gavtc> artifacts) {
-    public static BuildGroup mutable(ScmRef scmRef, Gavtc artifact) {
+    public static BuildGroup mutable(FqScmRef scmRef, Gavtc artifact) {
         final TreeSet<Gavtc> artifacts = new TreeSet<>(Gavtc.groupFirstComparator());
         artifacts.add(artifact);
         return new BuildGroup(scmRef, artifacts);

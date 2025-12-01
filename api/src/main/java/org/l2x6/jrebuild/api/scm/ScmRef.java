@@ -4,30 +4,10 @@
  */
 package org.l2x6.jrebuild.api.scm;
 
-import java.util.Objects;
-import org.l2x6.pom.tuner.model.Gav;
-
 public record ScmRef(
-        String name,
         Kind kind,
-        ScmRepository repository) {
-
-    public static ScmRef of(String tag, ScmRepository repository) {
-        Objects.requireNonNull(repository, "repository cannot be null");
-        if (tag == null || "HEAD".equals(tag)) {
-            return new ScmRef(null, Kind.UNKNOWN, repository);
-        }
-        return new ScmRef(tag, Kind.TAG, repository);
-    }
-
-    public static ScmRef createUnknown(Gav gav) {
-        return new ScmRef(null, Kind.UNKNOWN, ScmRepository.createUnknown(gav));
-    }
-
-    @Override
-    public String toString() {
-        return repository + "#" + name;
-    }
+        String name,
+        String revision) {
 
     public static enum Kind {
         TAG(false), BRANCH(false), COMMIT(false), UNKNOWN(true);
@@ -41,6 +21,15 @@ public record ScmRef(
         public boolean isUnknown() {
             return unknown;
         }
+    }
+
+    public static ScmRef createUnknown(String version) {
+        return new ScmRef(Kind.UNKNOWN, "unknown-for-version-" + version, null);
+    }
+
+    @Override
+    public String toString() {
+        return name + "@" + revision;
     }
 
 }
