@@ -8,11 +8,11 @@ import java.util.Objects;
 import java.util.function.Function;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
-import org.l2x6.jrebuild.api.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRepository;
+import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.pom.tuner.model.Gav;
 
 public class PomScmLocator extends AbstractScmLocator {

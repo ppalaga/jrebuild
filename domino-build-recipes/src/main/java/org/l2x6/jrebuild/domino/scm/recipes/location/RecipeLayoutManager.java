@@ -37,9 +37,9 @@ import org.l2x6.pom.tuner.model.Gav;
 public class RecipeLayoutManager implements RecipeDirectory {
 
     private static final Logger log = Logger.getLogger(RecipeLayoutManager.class);
-
-    public static final String ARTIFACT = "_artifact";
-    public static final String VERSION = "_version";
+    static final String SCM_INFO = "scm-info";
+    static final String ARTIFACT = "_artifact";
+    static final String VERSION = "_version";
     private final Path baseDirectory;
     private final Path scmInfoDirectory;
     //    private final Path buildInfoDirectory;
@@ -49,7 +49,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     public RecipeLayoutManager(Path baseDirectory) {
         this.baseDirectory = baseDirectory;
-        scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
+        scmInfoDirectory = baseDirectory.resolve(SCM_INFO);
         //        buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
         //        repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
         //        buildToolInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_TOOL_INFO);

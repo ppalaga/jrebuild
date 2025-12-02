@@ -107,6 +107,7 @@
 
     <modules>
         <module>api</module>
+        <module>common</module>
         <module>core</module>
         <module>domino-build-recipes</module>
         <module>reproducible-central</module>
@@ -125,6 +126,11 @@
             <dependency>
                 <groupId>org.l2x6.jrebuild</groupId>
                 <artifactId>jrebuild-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.l2x6.jrebuild</groupId>
+                <artifactId>jrebuild-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

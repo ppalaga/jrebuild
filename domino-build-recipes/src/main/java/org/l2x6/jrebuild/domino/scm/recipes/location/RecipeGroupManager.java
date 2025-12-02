@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.pom.tuner.model.Gav;
 
 /**
@@ -32,7 +33,7 @@ public class RecipeGroupManager {
             final RecipeDirectory repoManager;
             if (isCloneable(url)) {
                 try {
-                    final Path workingCopyDir = gitCloneBaseDir.resolve(uriToFileName(url));
+                    final Path workingCopyDir = gitCloneBaseDir.resolve(GitUtils.uriToFileName(url));
                     Files.createDirectories(workingCopyDir);
                     repoManager = RecipeRepositoryManager.create(url, workingCopyDir);
                 } catch (Exception e) {
@@ -68,17 +69,6 @@ public class RecipeGroupManager {
                 .sorted()
                 .findFirst()
                 .orElse(null);
-    }
-
-    public static String uriToFileName(String uri) {
-        return uri.replaceAll("^(http:|https:|git(\\+ssh)?:|ssh:|file:)/+", "")
-                .replaceAll("^git@", "")
-                .replaceAll("[^A-Za-z0-9._-]+", "-")
-                .replace("-[\\-]+", "-")
-                .replaceAll("^[-.]+", "")
-                .replaceAll("[-.]+$", "")
-                .replaceAll("\\.git$", "")
-                .replaceAll("[-.]+$", "");
     }
 
     public static String normalizeScmUri(String scmUri) {

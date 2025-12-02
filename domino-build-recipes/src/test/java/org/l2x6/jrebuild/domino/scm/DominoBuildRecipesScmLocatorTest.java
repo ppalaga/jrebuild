@@ -26,7 +26,7 @@ import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeGroupManager;
+import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.pom.tuner.model.Gav;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,7 +116,7 @@ class DominoBuildRecipesScmLocatorTest {
 
             assertThat(gitCloneDir).exists();
             assertThat(gitCloneDir.resolve(
-                    RecipeGroupManager.uriToFileName(repoUrl) + "/.git")).exists();
+                    GitUtils.uriToFileName(repoUrl) + "/.git")).exists();
         }
 
         // reuse the existing repo
@@ -145,17 +145,17 @@ class DominoBuildRecipesScmLocatorTest {
 
     @Test
     void uriToFileName() {
-        assertThat(RecipeGroupManager.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
+        assertThat(GitUtils.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
                 .isEqualTo("github.com-path-to-report.pdf-download-1-section");
-        assertThat(RecipeGroupManager.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
-        assertThat(RecipeGroupManager.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
+        assertThat(GitUtils.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
+        assertThat(GitUtils.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
                 .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(RecipeGroupManager.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
+        assertThat(GitUtils.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
                 .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(RecipeGroupManager.uriToFileName("git+ssh://git@github.com:owner/repo.git"))
+        assertThat(GitUtils.uriToFileName("git+ssh://git@github.com:owner/repo.git"))
                 .isEqualTo("github.com-owner-repo");
-        assertThat(RecipeGroupManager.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
-        assertThat(RecipeGroupManager.uriToFileName("git@github.com:quarkusio/quarkus.git"))
+        assertThat(GitUtils.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
+        assertThat(GitUtils.uriToFileName("git@github.com:quarkusio/quarkus.git"))
                 .isEqualTo("github.com-quarkusio-quarkus");
     }
 

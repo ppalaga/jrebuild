@@ -2,14 +2,14 @@
  * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.l2x6.jrebuild.reproducible.central;
+package org.l2x6.jrebuild.reproducible.central.api;
 
 import java.nio.file.Path;
 import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.reproducible.central.Buildspec.Builder;
-import org.l2x6.jrebuild.reproducible.central.Buildspec.Newline;
+import org.l2x6.jrebuild.reproducible.central.api.Buildspec.Builder;
+import org.l2x6.jrebuild.reproducible.central.api.Buildspec.Newline;
 
 class BuildspecTest {
     private static final Logger log = Logger.getLogger(BuildspecTest.class);
