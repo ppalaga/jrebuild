@@ -196,19 +196,6 @@ public record Buildspec(
         return new Builder();
     }
 
-    static String readAndRemoveComments(Path file) {
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        CliAssured
-                .command("sh", "-c", "shfmt --minify | shfmt --to-json")
-                .stdin(file)
-                .then()
-                .stdout()
-                .redirect(Path.of("target/commons-daemon-1.5.1.json"))
-                .execute()
-                .assertSuccess();
-        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
-    }
-
     enum Key {
         groupId,
         artifactId,
