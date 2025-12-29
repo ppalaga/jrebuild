@@ -189,7 +189,8 @@ public class MavenModelReaderImpl {
                 modelRequest.setModelSource(new FileModelSource(pomArtifact.getFile()));
                 modelRequest.setPomFile(pomArtifact.getFile());
             }
-
+            modelRequest.setValidationLevel(0);
+            
             ModelBuildingResult modelResult = modelBuilder.build(modelRequest);
             // ModelBuildingEx is thrown only on FATAL and ERROR severities, but we still can have WARNs
             // that may lead to unexpected build failure, log them

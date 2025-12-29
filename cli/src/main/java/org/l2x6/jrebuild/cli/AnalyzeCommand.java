@@ -7,6 +7,9 @@ package org.l2x6.jrebuild.cli;
 import eu.maveniverse.maven.mima.context.Context;
 import eu.maveniverse.maven.mima.context.ContextOverrides;
 import eu.maveniverse.maven.mima.context.Runtime;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -19,7 +22,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest;
@@ -212,12 +214,20 @@ public class AnalyzeCommand implements Runnable {
                         dominoRecipeUrls);
 
                 DependencyCollector.collect(context, re)
-                        .flatMap(resolvedArtifact -> new CutStemVisitor(stem).walk(resolvedArtifact).result())
-                        .map(resolvedArtifact -> {
+                        .onItem().transformToMulti(resolvedArtifact -> new CutStemVisitor(stem).walk(resolvedArtifact).result())
+                        .merge()
+                        .onItem().transformToUniAndMerge(resolvedArtifact -> Uni.createFrom().item(() -> {
                             ScmInfoNode rootScmInfoNode = locator.newVisitor().walk(resolvedArtifact).rootNode();
                             return PrintVisitor.toString(rootScmInfoNode);
                         })
-                        .forEach(p -> log.infof("Scm Repos:\n%s", p));
+                                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+
+                        )
+                        .onItem().invoke(p -> log.infof("Scm Repos:\n%s", p))
+                        .map(p -> null)
+                        .collect().asList()
+                        .await().indefinitely();
+                ;
             }
         }
     }
@@ -289,8 +299,8 @@ public class AnalyzeCommand implements Runnable {
             this.stem = stem;
         }
 
-        public Stream<ResolvedArtifactNode> result() {
-            return stemComplement.stream();
+        public Multi<ResolvedArtifactNode> result() {
+            return Multi.createFrom().iterable(stemComplement);
         }
 
         @Override

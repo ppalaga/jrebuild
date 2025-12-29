@@ -5,6 +5,9 @@
 package org.l2x6.jrebuild.core.dep;
 
 import eu.maveniverse.maven.mima.context.Context;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,7 +16,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.Model;
@@ -42,7 +44,7 @@ import org.l2x6.pom.tuner.model.GavtcsPattern;
 public class DependencyCollector {
     private static final Logger log = Logger.getLogger(DependencyCollector.class);
 
-    public static Stream<ResolvedArtifactNode> collect(Context context, DependencyCollectorRequest request) {
+    public static Multi<ResolvedArtifactNode> collect(Context context, DependencyCollectorRequest request) {
 
         final CachingMavenModelReader modelReader = context.lookup().lookup(CachingMavenModelReader.class).get();
         final List<org.eclipse.aether.graph.Dependency> constraints = new ArrayList<>();
@@ -76,48 +78,63 @@ public class DependencyCollector {
         }
         final RepositorySystemSession repoSession = rSession;
 
-        return request.rootArtifacts().parallelStream()
-                .map(rootGavtc -> {
+        return Multi.createFrom().iterable(request.rootArtifacts())
+                .onItem().transformToUniAndMerge(rootGavtc -> Uni.createFrom().item(() -> collectDependencies(
+                        context,
+                        repoSession,
+                        modelReader,
+                        request,
+                        constraints,
+                        rootGavtc))
+                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()));
 
-                    log.infof("Analyzing dependencies of %s", rootGavtc);
+    }
 
-                    final Artifact rootArtifact = JrebuildUtils.toAetherArtifact(rootGavtc);
+    static ResolvedArtifactNode collectDependencies(
+            Context context,
+            RepositorySystemSession repoSession,
+            CachingMavenModelReader modelReader,
+            DependencyCollectorRequest request,
+            List<org.eclipse.aether.graph.Dependency> constraints,
+            Gavtc rootGavtc) {
+        log.infof("Analyzing dependencies of %s", rootGavtc);
 
-                    org.eclipse.aether.graph.Dependency dependency = new org.eclipse.aether.graph.Dependency(rootArtifact,
-                            "runtime");
-                    final CollectRequest collectRequest = new CollectRequest(dependency, context.remoteRepositories())
-                            .setManagedDependencies(constraints);
+        final Artifact rootArtifact = JrebuildUtils.toAetherArtifact(rootGavtc);
 
-                    CollectResult result = null;
-                    try {
-                        result = context.repositorySystem()
-                                .collectDependencies(repoSession, collectRequest);
-                        final DependencyNode rootNode = result
-                                .getRoot();
-                        ResolvedArtifactNodeVisitor v = new ResolvedArtifactNodeVisitor(
-                                modelReader,
-                                request.includeParentsAndImports()
-                                        ? new ParentsAndImportsResolver(
-                                                modelReader)
-                                        : null);
-                        rootNode.accept(v);
-                        return v.rootNode;
-                    } catch (Exception e) {
-                        StringBuilder msg = new StringBuilder()
-                                .append("Could not resolve ").append(rootGavtc).append(" in thread ")
-                                .append(Thread.currentThread().getName());
-                        if (result != null) {
-                            List<org.eclipse.aether.graph.Dependency> deps = result.getRequest().getManagedDependencies();
-                            if (deps != null) {
-                                msg.append("; with dependencyManagement ");
-                                for (org.eclipse.aether.graph.Dependency dep : deps) {
-                                    msg.append("\n    - ").append(dep);
-                                }
-                            }
-                        }
-                        throw new RuntimeException(msg.toString(), e);
+        org.eclipse.aether.graph.Dependency dependency = new org.eclipse.aether.graph.Dependency(rootArtifact,
+                "runtime");
+        final CollectRequest collectRequest = new CollectRequest(dependency, context.remoteRepositories())
+                .setManagedDependencies(constraints);
+
+        CollectResult result = null;
+        try {
+            result = context.repositorySystem()
+                    .collectDependencies(repoSession, collectRequest);
+            final DependencyNode rootNode = result
+                    .getRoot();
+            ResolvedArtifactNodeVisitor v = new ResolvedArtifactNodeVisitor(
+                    modelReader,
+                    request.includeParentsAndImports()
+                            ? new ParentsAndImportsResolver(
+                                    modelReader)
+                            : null);
+            rootNode.accept(v);
+            return v.rootNode;
+        } catch (Exception e) {
+            StringBuilder msg = new StringBuilder()
+                    .append("Could not resolve ").append(rootGavtc).append(" in thread ")
+                    .append(Thread.currentThread().getName());
+            if (result != null) {
+                List<org.eclipse.aether.graph.Dependency> deps = result.getRequest().getManagedDependencies();
+                if (deps != null) {
+                    msg.append("; with dependencyManagement ");
+                    for (org.eclipse.aether.graph.Dependency dep : deps) {
+                        msg.append("\n    - ").append(dep);
                     }
-                });
+                }
+            }
+            throw new RuntimeException(msg.toString(), e);
+        }
     }
 
     private static void collectConstraints(

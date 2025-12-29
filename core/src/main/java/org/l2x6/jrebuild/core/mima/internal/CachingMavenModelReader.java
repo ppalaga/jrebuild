@@ -89,7 +89,7 @@ public class CachingMavenModelReader extends MavenModelReader {
                 repos = context.remoteRepositories();
             }
             try {
-                final InternalResult result = readInternal(gav, ModelRequest.builder().setArtifact(artifact).build(), repos);
+                final InternalResult result = readInternal(gav, createRequest(artifact), repos);
                 return result.modelData;
             } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
                 throw new RuntimeException("Could not read pom of " + artifact, e);
@@ -106,12 +106,16 @@ public class CachingMavenModelReader extends MavenModelReader {
                 repos = context.remoteRepositories();
             }
             try {
-                final InternalResult result = readInternal(gav, ModelRequest.builder().setArtifact(artifact).build(), repos);
+                final InternalResult result = readInternal(gav, createRequest(artifact), repos);
                 return result.modelData;
             } catch (VersionResolutionException | ArtifactResolutionException | ArtifactDescriptorException e) {
                 throw new RuntimeException("Could not read pom of " + artifact, e);
             }
         });
+    }
+
+    private ModelRequest createRequest(Artifact artifact) {
+        return ModelRequest.builder().setArtifact(artifact)..build();
     }
 
     public Model readEffectiveModel(Gav gav) {

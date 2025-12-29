@@ -54,6 +54,7 @@ public class ScmRepositoryLocatorTest {
                         ScmInfoNode rootScmInfoNode = locator.newVisitor().walk(resolvedArtifact).rootNode();
                         return PrintVisitor.toString(rootScmInfoNode);
                     })
+                    .collect().asList().await().indefinitely().stream()
                     .peek(p -> log.infof("Scm Repos:\n%s", p))
                     .collect(Collectors.toList());
             Assertions.assertThat(trees).containsExactly(

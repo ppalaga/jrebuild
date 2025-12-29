@@ -102,7 +102,7 @@ public class DependencyCollectorTest {
                     .rootArtifacts(Gavtc.of("org.l2x6.jrebuild.test-project:jrebuild-test-build-child:0.0.1:jar"))
                     .build();
             List<String> trees = DependencyCollector.collect(context, re)
-                    .sorted()
+                    .collect().asList().await().indefinitely().stream().sorted()
                     .map(PrintVisitor::toString)
                     .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());
@@ -139,7 +139,7 @@ public class DependencyCollectorTest {
                     .includeParentsAndImports(false)
                     .build();
             List<String> trees = DependencyCollector.collect(context, re)
-                    .sorted()
+                    .collect().asList().await().indefinitely().stream().sorted()
                     .map(PrintVisitor::toString)
                     .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());
@@ -180,7 +180,7 @@ public class DependencyCollectorTest {
         try (Context context = runtime.create(overrides)) {
 
             List<String> trees = DependencyCollector.collect(context, re)
-                    .sorted()
+                    .collect().asList().await().indefinitely().stream().sorted()
                     .map(PrintVisitor::toString)
                     .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());
@@ -200,7 +200,7 @@ public class DependencyCollectorTest {
         try (Context context = runtime.create(overrides)) {
 
             List<String> trees = DependencyCollector.collect(context, re)
-                    .sorted()
+                    .collect().asList().await().indefinitely().stream().sorted()
                     .map(PrintVisitor::toString)
                     .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());
@@ -262,7 +262,7 @@ public class DependencyCollectorTest {
             customizeRequestBuilder.accept(builder);
             DependencyCollectorRequest re = builder.build();
             List<String> trees = DependencyCollector.collect(context, re)
-                    .sorted()
+                    .collect().asList().await().indefinitely().stream().sorted()
                     .map(PrintVisitor::toString)
                     .peek(tree -> log.infof("Dependencies:\n%s", tree))
                     .collect(Collectors.toList());

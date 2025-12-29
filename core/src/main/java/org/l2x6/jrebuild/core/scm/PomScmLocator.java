@@ -6,6 +6,9 @@ package org.l2x6.jrebuild.core.scm;
 
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
@@ -29,13 +32,15 @@ public class PomScmLocator extends AbstractScmLocator {
         final Model effectiveModel = getEffectiveModel.apply(gav);
         final Scm scm = effectiveModel.getScm();
         if (scm != null) {
-            if (scm.getConnection() != null && !scm.getConnection().isEmpty()) {
-                return toScmRef(gav, scm, scm.getConnection());
-            }
-            String url = scm.getUrl();
-            if (url != null && url.startsWith("https://github.com/")) {
-                return toScmRef(gav, scm, url);
-            }
+            return Stream.<Supplier<String>>of(scm::getConnection, scm::getDeveloperConnection, () -> {
+                String url = scm.getUrl();
+                 return url != null && url.startsWith("https://github.com/") ? url : null;
+            })
+            .map(Supplier::get)
+            .filter(url -> url != null)
+            .map(url -> toScmRef(gav, scm, url))
+            .findFirst()
+            .orElse(null);
         }
         String url = effectiveModel.getUrl();
         if (url != null && url.startsWith("https://github.com/")) {
