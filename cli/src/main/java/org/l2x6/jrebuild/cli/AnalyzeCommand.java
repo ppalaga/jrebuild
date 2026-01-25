@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
@@ -33,6 +34,7 @@ import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader;
 import org.l2x6.jrebuild.core.scm.GitRemoteScmLookup;
 import org.l2x6.jrebuild.core.scm.ScmRepositoryService;
 import org.l2x6.jrebuild.core.scm.ScmRepositoryService.ScmInfoNode;
+import org.l2x6.jrebuild.core.tree.Forest;
 import org.l2x6.jrebuild.core.tree.PrintVisitor;
 import org.l2x6.jrebuild.core.tree.Visitor;
 import org.l2x6.pom.tuner.model.Gav;
@@ -211,30 +213,39 @@ public class AnalyzeCommand implements Runnable {
                         reproducibleCentralUrls,
                         dominoRecipeUrls);
 
-                DependencyCollector.collect(context, re)
+                final Collection<ScmInfoNode> dependencyTrees = DependencyCollector.collect(context, re)
 
                         .onItem()
                         .transformToMulti(resolvedArtifact -> new CutStemVisitor(stem).walk(resolvedArtifact).result())
                         .merge()
 
                         .onItem()
-                        .transformToUniAndMerge(resolvedArtifact -> Uni.createFrom().item(() -> {
-                            ScmInfoNode rootScmInfoNode = locator.newVisitor().walk(resolvedArtifact).rootNode();
-                            return PrintVisitor.toString(rootScmInfoNode);
+                        .transformToUniAndMerge(resolvedArtifact -> {
+
+                            return Uni.createFrom().item(() -> locator.newVisitor().walk(resolvedArtifact).rootNode())
+                                    .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+
                         })
-                                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
 
-                        )
-
-                        .onItem()
-                        .invoke(p -> log.infof("Scm Repos:\n%s", p))
-                        .onFailure().invoke(e -> log.error(e.getMessage(), e))
+//                        .onItem()
+//                        .transform(PrintVisitor::toString)
+//
+//                        .onItem()
+//                        .invoke(p -> log.infof("Scm Repos:\n%s", p))
+//                        .onFailure().invoke(e -> log.error(e.getMessage(), e))
 
                         .collect().asList()
                         .await().indefinitely();
                 ;
+
+                final Forest<ScmInfoNode> forest = new Forest<ScmInfoNode>(dependencyTrees);
             }
         }
+    }
+
+    private List<ScmInfoNode> merge(List<ScmInfoNode> dependencyGraphs) {
+        // TODO Auto-generated method stub
+        return null;
     }
 
     static Path resolveHome(Path userHome, Path path) {

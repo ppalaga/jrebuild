@@ -4,6 +4,7 @@
  */
 package org.l2x6.jrebuild.core.build;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -12,13 +13,27 @@ import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
-public record BuildGroup(
-        FqScmRef scmRef,
-        Set<Gavtc> artifacts) {
-    public static BuildGroup mutable(FqScmRef scmRef, Gavtc artifact) {
-        final TreeSet<Gavtc> artifacts = new TreeSet<>(Gavtc.groupFirstComparator());
-        artifacts.add(artifact);
-        return new BuildGroup(scmRef, artifacts);
+public class BuildGroup {
+
+    protected final FqScmRef scmRef;
+    protected final Set<Gavtc> artifacts;
+
+    public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
+        super();
+        this.scmRef = scmRef;
+        this.artifacts = artifacts;
+    }
+
+    public FqScmRef scmRef() {
+        return scmRef;
+    }
+
+    public Set<Gavtc> artifacts() {
+        return artifacts;
+    }
+
+    public static Builder builder(FqScmRef scmRef) {
+        return new Builder(scmRef);
     }
 
     @Override
@@ -61,6 +76,32 @@ public record BuildGroup(
             sb.append("]");
         }
         return sb.toString();
+    }
+
+    public static class Builder extends BuildGroup {
+
+        public Builder(FqScmRef scmRef) {
+            super(scmRef, new TreeSet<>(Gavtc.groupFirstComparator()));
+        }
+
+        public Builder artifact(Gavtc artifact) {
+            this.artifacts.add(artifact);
+            return this;
+        }
+
+        public Builder merge(BuildGroup other) {
+            if (!this.scmRef.equals(other.scmRef)) {
+                throw new IllegalStateException("Cannot merge BuildGroup with scmRef "+ other.scmRef + " into BuildGroup with scmRef "+ this.scmRef + "; they must be equal");
+            }
+            this.artifacts.addAll(other.artifacts);
+            return this;
+        }
+
+        public BuildGroup build() {
+            TreeSet<Gavtc> arts = new TreeSet<>(Gavtc.groupFirstComparator());
+            return new BuildGroup(scmRef, Collections.unmodifiableSet(arts));
+        }
+
     }
 
 }

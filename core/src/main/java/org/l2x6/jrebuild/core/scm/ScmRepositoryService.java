@@ -78,7 +78,7 @@ public class ScmRepositoryService implements ScmLocator {
             Gav gav = gavtc.toGav();
             FqScmRef scmRef = locate(gav);
             if (stack.isEmpty()) {
-                ScmInfoNode newNode = new ScmInfoNode(BuildGroup.mutable(scmRef, gavtc));
+                ScmInfoNode newNode = new ScmInfoNode(BuildGroup.builder(scmRef).artifact(gavtc));
                 stack.push(newNode);
             } else {
                 ScmInfoNode parent = stack.peek();
@@ -86,7 +86,7 @@ public class ScmRepositoryService implements ScmLocator {
                     parent.buildGroup.artifacts().add(gavtc);
                     parent.depth.incrementAndGet();
                 } else {
-                    ScmInfoNode newNode = new ScmInfoNode(BuildGroup.mutable(scmRef, gavtc));
+                    ScmInfoNode newNode = new ScmInfoNode(BuildGroup.builder(scmRef).artifact(gavtc));
                     parent.children.add(newNode);
                     stack.push(newNode);
                 }
