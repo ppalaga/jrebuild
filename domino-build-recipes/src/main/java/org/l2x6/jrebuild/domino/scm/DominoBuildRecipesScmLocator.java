@@ -75,7 +75,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
 
         for (RepositoryInfo parsedInfo : repos) {
             final ScmRepository uri = new ScmRepository(SOURCE, "git", parsedInfo.getUriWithoutFragment());
-            log.tracef("Mapping %s to a tag in %s with %d mappings", gav, uri, allMappings.size());
+            log.debugf("Mapping %s to a tag in %s with mappings %s", gav, uri, allMappings);
 
             final Map<String, String> tagsToHash = scmLookup.getRefs(uri, Kind.TAG);
 

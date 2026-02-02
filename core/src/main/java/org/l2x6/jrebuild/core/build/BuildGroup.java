@@ -6,13 +6,16 @@ package org.l2x6.jrebuild.core.build;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
-import org.l2x6.jrebuild.common.JrebuildCommonUtils;
+import org.l2x6.jrebuild.api.scm.JrebuildUtils;
+import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -25,7 +28,7 @@ public class BuildGroup {
     private BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
         super();
         this.scmRef = Objects.requireNonNull(scmRef);
-        this.artifacts = JrebuildCommonUtils.assertImmutable(Objects.requireNonNull(artifacts));
+        this.artifacts = JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts));
         this.hashCode = 31 * scmRef.hashCode() + artifacts.hashCode();
     }
 
@@ -69,27 +72,83 @@ public class BuildGroup {
                 .findAny().isPresent();
     }
 
-    public BuildGroup assertImmutable() {
-        JrebuildCommonUtils.assertImmutable(artifacts);
-        return this;
-    }
-
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(scmRef.isUnknown() ? "❌ " : "✅ ");
+        return append(new StringBuilder(), scmRef, artifacts).toString();
+    }
+
+    public static StringBuilder append(StringBuilder sb, FqScmRef scmRef, Set<Gavtc> artifacts) {
         sb.append(scmRef);
         if (artifacts.isEmpty()) {
             sb.append(" []");
         } else if (artifacts.size() == 1) {
             sb.append(" [").append(artifacts.iterator().next()).append("]");
         } else {
+            final Map<Ga, CharNode> artifactIdsByGroupVersion = new TreeMap<>();
+            artifacts.stream().forEach(a -> {
+                final Ga key = new Ga(a.getGroupId(), a.getVersion());
+                artifactIdsByGroupVersion.computeIfAbsent(key, k -> CharNode.root()).add(a.getArtifactId());
+            });
+            boolean first = true;
+
             sb.append(" [");
-            sb.append(artifacts.stream().map(a -> a.getGroupId() + ":*:" + a.getVersion()).distinct()
-                    .collect(Collectors.joining(", ")));
+            for (Entry<Ga, CharNode> en : artifactIdsByGroupVersion.entrySet()) {
+                Ga ga = en.getKey();
+                String groupId = ga.getGroupId();
+                String version = ga.getArtifactId();
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(',');
+                }
+                sb.append(groupId).append(':');
+                en.getValue().append(sb);
+                sb.append(':').append(version);
+            }
             sb.append("]");
         }
-        return sb.toString();
+        return sb;
+    }
+
+    static record CharNode(char ch, Map<Character, CharNode> children) {
+        public void add(String chars) {
+            add(chars.toCharArray(), 0);
+        }
+
+        public void append(StringBuilder sb) {
+            if (children.isEmpty()) {
+                return;
+            } else if (children.size() == 1) {
+                CharNode child = children.values().iterator().next();
+                sb.append(child.ch);
+                child.append(sb);
+            } else {
+                sb.append('[');
+                boolean first = true;
+                for (CharNode child : children.values()) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        sb.append('|');
+                    }
+                    sb.append(child.ch);
+                    child.append(sb);
+                }
+                sb.append(']');
+            }
+        }
+
+        public static CharNode root() {
+            return new CharNode((char) 0, new TreeMap<>());
+        }
+
+        public void add(char[] chars, int offset) {
+            char c = chars[offset++];
+            CharNode childNode = children.computeIfAbsent(c, k -> new CharNode(c, new TreeMap<>()));
+            if (offset < chars.length) {
+                childNode.add(chars, offset);
+            }
+        }
     }
 
     public static class Builder {
@@ -141,9 +200,15 @@ public class BuildGroup {
                 return false;
             if (getClass() != obj.getClass())
                 return false;
-            BuildGroup other = (BuildGroup) obj;
+            Builder other = (Builder) obj;
             return Objects.equals(scmRef, other.scmRef);
         }
+
+        @Override
+        public String toString() {
+            return BuildGroup.append(new StringBuilder(), scmRef, artifacts).toString();
+        }
+
     }
 
 }

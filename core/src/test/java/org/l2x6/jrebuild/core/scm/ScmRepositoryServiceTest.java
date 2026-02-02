@@ -29,7 +29,7 @@ import org.l2x6.jrebuild.core.scm.ScmRepositoryService.ScmInfoNode;
 import org.l2x6.jrebuild.core.tree.PrintVisitor;
 import org.l2x6.pom.tuner.model.Gavtc;
 
-public class ScmRepositoryLocatorTest {
+public class ScmRepositoryServiceTest {
     private static final Logger log = Logger.getLogger(DependencyCollectorTest.class);
 
     @Test

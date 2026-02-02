@@ -4,10 +4,10 @@
  */
 package org.l2x6.jrebuild.core.tree;
 
-import java.util.List;
+import java.util.Collection;
 
 public interface Node<T extends Node<T>> {
-    List<T> children();
+    Collection<T> children();
 
     default <V extends Visitor<T, V>> boolean accept(Visitor<T, V> visitor) {
         try {

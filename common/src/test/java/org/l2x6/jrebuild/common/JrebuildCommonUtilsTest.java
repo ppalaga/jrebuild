@@ -15,6 +15,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.JrebuildUtils;
 
 public class JrebuildCommonUtilsTest {
 
@@ -38,9 +39,9 @@ public class JrebuildCommonUtilsTest {
                 Collections.singletonList(ELEM),
                 Collections.unmodifiableList(Arrays.asList(ELEM)))
                 .forEach(list -> {
-                    JrebuildCommonUtils.assertImmutable(list);
+                    JrebuildUtils.assertImmutable(list);
                 });
-        Assertions.assertThatThrownBy(() -> JrebuildCommonUtils.assertImmutable(new ArrayList<String>()))
+        Assertions.assertThatThrownBy(() -> JrebuildUtils.assertImmutable(new ArrayList<String>()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Mutable list: " + ArrayList.class.getName());
 
@@ -74,15 +75,15 @@ public class JrebuildCommonUtilsTest {
                 Collections.singleton(String.valueOf(i++)),
                 Collections.unmodifiableSet(new HashSet<>(Arrays.asList(String.valueOf(i++)))))
                 .forEach(list -> {
-                    JrebuildCommonUtils.assertImmutable(list);
+                    JrebuildUtils.assertImmutable(list);
                 });
-        Assertions.assertThatThrownBy(() -> JrebuildCommonUtils.assertImmutable(new TreeSet<String>()))
+        Assertions.assertThatThrownBy(() -> JrebuildUtils.assertImmutable(new TreeSet<String>()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Mutable set: " + TreeSet.class.getName());
-        Assertions.assertThatThrownBy(() -> JrebuildCommonUtils.assertImmutable(new HashSet<String>()))
+        Assertions.assertThatThrownBy(() -> JrebuildUtils.assertImmutable(new HashSet<String>()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Mutable set: " + HashSet.class.getName());
-        Assertions.assertThatThrownBy(() -> JrebuildCommonUtils.assertImmutable(new LinkedHashSet<String>()))
+        Assertions.assertThatThrownBy(() -> JrebuildUtils.assertImmutable(new LinkedHashSet<String>()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Mutable set: " + LinkedHashSet.class.getName());
 

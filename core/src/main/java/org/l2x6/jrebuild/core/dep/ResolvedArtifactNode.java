@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.eclipse.aether.repository.RemoteRepository;
-import org.l2x6.jrebuild.common.JrebuildCommonUtils;
+import org.l2x6.jrebuild.api.scm.JrebuildUtils;
 import org.l2x6.jrebuild.core.scm.ScmRepositoryService.ScmInfoNode.Builder;
 import org.l2x6.jrebuild.core.tree.Node;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -26,8 +26,8 @@ public class ResolvedArtifactNode implements Comparable<ResolvedArtifactNode>, N
         super();
         this.axis = axis;
         this.gavtc = rootGavtc;
-        this.children = JrebuildCommonUtils.assertImmutable(children);
-        this.repositories = JrebuildCommonUtils.assertImmutable(repositories);
+        this.children = JrebuildUtils.assertImmutable(children);
+        this.repositories = JrebuildUtils.assertImmutable(repositories);
         this.hashCode = 31 * (31 * gavtc.hashCode() + children.hashCode()) + repositories.hashCode();
     }
 
@@ -116,7 +116,7 @@ public class ResolvedArtifactNode implements Comparable<ResolvedArtifactNode>, N
             super();
             this.axis = axis;
             this.gavtc = Objects.requireNonNull(gavtc);
-            this.repositories = JrebuildCommonUtils.assertImmutable(Objects.requireNonNull(repositories));
+            this.repositories = JrebuildUtils.assertImmutable(Objects.requireNonNull(repositories));
         }
 
         public Builder child(Builder child) {
