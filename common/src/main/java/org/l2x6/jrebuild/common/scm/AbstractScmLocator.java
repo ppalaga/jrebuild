@@ -33,6 +33,9 @@ public abstract class AbstractScmLocator implements ScmLocator {
             // seen in commons-beanutils
             (repo, gav) -> "rel/" + gav.getVersion(),
             (repo, gav) -> "rel/" + gav.getArtifactId() + "-" + gav.getVersion(),
+            (repo, gav) -> lastPathSegment(repo)
+                    .map(gitRepoName -> "rel/" + gitRepoName + "-" + gav.getVersion())
+                    .orElse(null),
             // Groovy
             (repo, gav) -> lastPathSegment(repo)
                     .map(gitRepoName -> gitRepoName.toUpperCase(Locale.US) + "_" + gav.getVersion().replace('.', '_'))

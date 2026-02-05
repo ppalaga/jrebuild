@@ -168,7 +168,8 @@ public class ReproducibleCentralLayout implements BuildspecRepository {
     private record BuildinfoEntry(Buildinfo buildinfo, Buildspec buildspec) {
         public static BuildinfoEntry of(Path buildspecPath) {
             final Buildspec buildspec = Buildspec.of(buildspecPath);
-            final Path buildinfoPath = buildspecPath.getParent().resolve(buildspec.buildinfo());
+            final Path buildinfoPath = buildspecPath.getParent()
+                    .resolve(buildspecPath.getFileName().toString().replace(".buildspec", ".buildinfo"));
             return new BuildinfoEntry(Buildinfo.of(buildinfoPath, buildspec.gav()), buildspec);
         }
     }
