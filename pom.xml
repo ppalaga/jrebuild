@@ -58,7 +58,7 @@
     <properties>
         <!-- Dependency versions in alphabectic order -->
         <assertj.version>3.27.6</assertj.version>
-        <cli-assured.version>0.0.1-alpha17</cli-assured.version>
+        <cli-assured.version>0.0.1</cli-assured.version>
         <jackson.version>3.0.3</jackson.version>
         <jgit.version>7.5.0.202512021534-r</jgit.version>
         <junit.version>5.13.4</junit.version>
@@ -207,7 +207,7 @@
                 <version>${resolver.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.l2x6.cli-assured</groupId>
+                <groupId>org.cli-assured</groupId>
                 <artifactId>cli-assured</artifactId>
                 <version>${cli-assured.version}</version>
             </dependency>

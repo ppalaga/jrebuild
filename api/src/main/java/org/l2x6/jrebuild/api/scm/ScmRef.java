@@ -9,6 +9,13 @@ public record ScmRef(
         String name,
         String revision) {
 
+    public String revisionOrUnknownRevision() {
+        if (revision == null) {
+            return "unknown-revision";
+        }
+        return revision;
+    }
+
     public static enum Kind {
         TAG, BRANCH, COMMIT, UNKNOWN("❌"), FAILED("💣");
 

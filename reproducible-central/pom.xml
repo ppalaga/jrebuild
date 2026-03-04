@@ -54,7 +54,7 @@
             <artifactId>org.eclipse.jgit.ssh.jsch</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.l2x6.cli-assured</groupId>
+            <groupId>org.cli-assured</groupId>
             <artifactId>cli-assured</artifactId>
         </dependency>
 

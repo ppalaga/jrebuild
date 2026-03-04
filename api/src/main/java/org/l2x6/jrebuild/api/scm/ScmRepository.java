@@ -4,8 +4,12 @@
  */
 package org.l2x6.jrebuild.api.scm;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Optional;
+import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -62,6 +66,32 @@ public record ScmRepository(
 
     public boolean isUnknownOrFailed() {
         return UNKNOWN.equals(type) || FAILED.equals(type);
+    }
+
+    public Optional<String> lastPathSegment() {
+        if (uri == null) {
+            return Optional.empty();
+        }
+        if ("git".equals(type)) {
+            try {
+                URIish urish = new URIish(uri);
+                String p = urish.getPath();
+                if (p != null) {
+                    if (p.endsWith(".git")) {
+                        p = p.substring(0, p.length() - 4);
+                    }
+                    int slashPos = p.lastIndexOf('/');
+                    return Optional.of(slashPos >= 0 ? p.substring(slashPos + 1) : p);
+                }
+            } catch (URISyntaxException ignored) {
+            }
+        }
+        final String p = URI.create(uri).getPath();
+        if (p != null) {
+            int slashPos = p.lastIndexOf('/');
+            return Optional.of(slashPos >= 0 ? p.substring(slashPos + 1) : p);
+        }
+        return Optional.empty();
     }
 
 }

@@ -7,6 +7,8 @@ package org.l2x6.jrebuild.core.build;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -72,6 +74,72 @@ public class BuildGroup {
                 .map(Gavtc::toGav)
                 .filter(gav::equals)
                 .findAny().isPresent();
+    }
+
+    public Gav findMainArtifact() {
+        if (artifacts.isEmpty()) {
+            throw new IllegalStateException("No artifacts in BuildGroup " + this);
+        } else if (artifacts.size() == 1) {
+            return artifacts.iterator().next().toGav();
+        } else {
+            final Map<Ga, Set<Gav>> groupIds = new TreeMap<>();
+            Comparator<Gav> gavComparator = Comparator.<Gav, Integer> comparing(gav -> gav.getArtifactId().length())
+                    .thenComparing(gav -> gav);
+            artifacts.stream().forEach(a -> {
+                groupIds.computeIfAbsent(new Ga(a.getGroupId(), a.getVersion()), k -> new TreeSet<>(gavComparator))
+                        .add(a.toGav());
+            });
+
+            /* Groups with more artifacts first, then alphabetically by groupId */
+            final Comparator<Entry<Ga, Set<Gav>>> entryComparator = Comparator
+                    .<Entry<Ga, Set<Gav>>, Integer> comparing(en -> en.getValue().size() * -1)
+                    .thenComparing(en -> en.getKey());
+
+            final Ga mainGroupId = groupIds.entrySet().stream()
+                    .sorted(entryComparator)
+                    .map(Entry::getKey)
+                    .findFirst()
+                    .orElseThrow();
+
+            /* Collect artifactIds of the main group */
+            final Set<Gav> mainGroupArtifacts = groupIds.get(mainGroupId);
+            if (mainGroupArtifacts.size() == 1) {
+                return mainGroupArtifacts.iterator().next();
+            }
+            /* find the longest prefix */
+            final String prefix = longestPrefix(mainGroupArtifacts);
+            if (!prefix.isEmpty()) {
+                return new Gav(mainGroupId.getGroupId(), prefix,
+                        mainGroupId.getArtifactId() /* We store version in the artifactId field of Ga */);
+            }
+            /* ... and fallback to the shortest */
+            return mainGroupArtifacts.iterator().next();
+        }
+    }
+
+    static String longestPrefix(Collection<Gav> gavs) {
+        if (gavs.isEmpty()) {
+            return "";
+        }
+
+        Iterator<Gav> it = gavs.iterator();
+        Gav gav = it.next();
+        String prefix = gav.getArtifactId();
+
+        while (it.hasNext()) {
+            String aid = it.next().getArtifactId();
+            while (!aid.startsWith(prefix)) {
+                prefix = prefix.substring(0, prefix.length() - 1);
+                if (prefix.isEmpty()) {
+                    return "";
+                }
+            }
+        }
+
+        while (prefix.endsWith("-")) {
+            prefix = prefix.substring(0, prefix.length() - 1);
+        }
+        return prefix;
     }
 
     @Override

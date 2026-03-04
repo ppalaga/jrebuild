@@ -4,14 +4,11 @@
  */
 package org.l2x6.jrebuild.common.scm;
 
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
-import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
@@ -32,7 +29,7 @@ public abstract class AbstractScmLocator implements ScmLocator {
             (repo, gav) -> gav.getArtifactId() + "-" + gav.getVersion().replace('.', '_'),
             // seen in https://github.com/jakartaee/servlet
             (repo, gav) -> gav.getVersion() + "-RELEASE",
-            (repo, gav) -> lastPathSegment(repo).map(gitRepoName -> gitRepoName + "-" + gav.getVersion()).orElse(null),
+            (repo, gav) -> repo.lastPathSegment().map(gitRepoName -> gitRepoName + "-" + gav.getVersion()).orElse(null),
             (repo, gav) -> "v" + gav.getVersion(),
             (repo, gav) -> "v_" + gav.getVersion(),
             (repo, gav) -> "r" + gav.getVersion(),
@@ -41,15 +38,15 @@ public abstract class AbstractScmLocator implements ScmLocator {
             // seen in commons-beanutils
             (repo, gav) -> "rel/" + gav.getVersion(),
             (repo, gav) -> "rel/" + gav.getArtifactId() + "-" + gav.getVersion(),
-            (repo, gav) -> lastPathSegment(repo)
+            (repo, gav) -> repo.lastPathSegment()
                     .map(gitRepoName -> "rel/" + gitRepoName + "-" + gav.getVersion())
                     .orElse(null),
             // Groovy
-            (repo, gav) -> lastPathSegment(repo)
+            (repo, gav) -> repo.lastPathSegment()
                     .map(gitRepoName -> gitRepoName.toUpperCase(Locale.US) + "_" + gav.getVersion().replace('.', '_'))
                     .orElse(null),
             // Javamail
-            (repo, gav) -> lastPathSegment(repo)
+            (repo, gav) -> repo.lastPathSegment()
                     .map(gitRepoName -> gitRepoName.toUpperCase(Locale.US) + "-" + gav.getVersion().replace('.', '_'))
                     .orElse(null));
 
@@ -84,26 +81,4 @@ public abstract class AbstractScmLocator implements ScmLocator {
     protected boolean isSha1(String revision) {
         return revision != null && SHA_PATTERN.matcher(revision).matches();
     }
-
-    static Optional<String> lastPathSegment(ScmRepository repository) {
-        if (repository.uri() == null) {
-            return Optional.empty();
-        }
-        if ("git".equals(repository.type())) {
-            try {
-                URIish urish = new URIish(repository.uri());
-                String p = urish.getPath();
-                if (p != null) {
-                    if (p.endsWith(".git")) {
-                        p = p.substring(0, p.length() - 4);
-                    }
-                    int slashPos = p.lastIndexOf('/');
-                    return Optional.of(slashPos >= 0 ? p.substring(slashPos + 1) : p);
-                }
-            } catch (URISyntaxException ignored) {
-            }
-        }
-        return Optional.empty();
-    }
-
 }

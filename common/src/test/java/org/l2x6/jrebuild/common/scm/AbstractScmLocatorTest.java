@@ -22,6 +22,8 @@ public class AbstractScmLocatorTest {
         Assertions.assertThat(tags).containsExactly(
                 "1.2.3",
                 "foo-core-1.2.3",
+                "foo-core-1_2_3",
+                "1.2.3-RELEASE",
                 "quarkus-1.2.3",
                 "v1.2.3",
                 "v_1.2.3",
@@ -37,12 +39,12 @@ public class AbstractScmLocatorTest {
     @Test
     void lastPathSegment() {
         Assertions
-                .assertThat(AbstractScmLocator.lastPathSegment(ScmRepository.of("? git git@github.com:quarkusio/quarkus.git"))
+                .assertThat(ScmRepository.of("? git git@github.com:quarkusio/quarkus.git").lastPathSegment()
                         .get())
                 .isEqualTo("quarkus");
         Assertions
                 .assertThat(
-                        AbstractScmLocator.lastPathSegment(ScmRepository.of("? git https://github.com/quarkusio/quarkus.git"))
+                        ScmRepository.of("? git https://github.com/quarkusio/quarkus.git").lastPathSegment()
                                 .get())
                 .isEqualTo("quarkus");
     }
