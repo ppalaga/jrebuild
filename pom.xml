@@ -59,6 +59,7 @@
         <!-- Dependency versions in alphabectic order -->
         <assertj.version>3.27.6</assertj.version>
         <cli-assured.version>0.0.1</cli-assured.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
         <jackson.version>3.0.3</jackson.version>
         <jgit.version>7.5.0.202512021534-r</jgit.version>
         <junit.version>5.13.4</junit.version>
@@ -97,7 +98,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- maven-compiler-plugin -->
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.showWarnings>true</maven.compiler.showWarnings>
         <!-- license-maven-plugin -->
         <license.failIfMissing>true</license.failIfMissing>
@@ -179,6 +180,11 @@
                 <groupId>eu.maveniverse.maven.mima.runtime</groupId>
                 <artifactId>standalone-static</artifactId>
                 <version>${mima.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.maven</groupId>
