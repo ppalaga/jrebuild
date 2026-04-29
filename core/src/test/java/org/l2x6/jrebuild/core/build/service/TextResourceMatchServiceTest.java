@@ -7,8 +7,10 @@ import java.nio.file.Path;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
+import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService.TextResourceMatchService;
 
@@ -65,6 +67,12 @@ public class TextResourceMatchServiceTest {
         assertCompareText(service, "foo\nbar", "foo\nbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
         assertCompareText(service, "foo\rbar", "foo\rbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
         assertCompareText(service, "foo\r\nbar", "foo\r\nbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
+    }
+
+    static List<IndentedLine> split(String string) {
+        return JrebuildUtils.lines(string)
+                .map(l -> IndentedLine.parse(l, 4))
+                .toList();
     }
 
     static void assertCompareText(ResourceMatchService service, String a, String b, ResourceMatch expected) throws IOException {
