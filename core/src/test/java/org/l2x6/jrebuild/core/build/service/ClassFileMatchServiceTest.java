@@ -1,7 +1,6 @@
 package org.l2x6.jrebuild.core.build.service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -14,85 +13,10 @@ import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService.ClassFileMatchService;
-import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService.TextResourceMatchService;
 import org.l2x6.jrebuild.core.build.service.samples.ClassPerson1;
 import org.l2x6.jrebuild.core.build.service.samples.ClassPerson2;
 
-public class ResourceMatchServiceTest {
-    @Test
-    void textResourceMatchService() throws IOException {
-        ResourceMatchService service = new TextResourceMatchService();
-        assertCompareTexts(service);
-    }
-
-    @Test
-    void textBaseResourceMatchService() throws IOException {
-        ResourceMatchService service = new ResourceMatchService.BaseResourceMatchService();
-        assertCompareTexts(service);
-    }
-
-    static void assertCompareTexts(ResourceMatchService service) throws IOException {
-        assertCompareText(service, "foo", "bar", new ResourceMatch(
-                ResourceMatchLevel.MISMATCH,
-                "target/b.txt",
-                split("""
-                        --- target/a.txt
-                        +++ target/b.txt
-                        @@ -1,1 +1,1 @@
-                        -foo
-                        +bar
-                        """),
-                List.of()));
-        assertCompareText(service, "foo\nbar", "foo\r\nbar", new ResourceMatch(
-                ResourceMatchLevel.SUFFICIENT,
-                "target/b.txt",
-                split("""
-                        --- target/a.txt
-                        +++ target/b.txt
-                        @@ -1,2 +1,2 @@
-                        -foo\\r
-                        +foo\\r\\n
-                         bar
-                        """),
-                List.of()));
-        assertCompareText(service, "foo\n", "foo\r\n", new ResourceMatch(
-                ResourceMatchLevel.SUFFICIENT,
-                "target/b.txt",
-                split("""
-                        --- target/a.txt
-                        +++ target/b.txt
-                        @@ -1,1 +1,1 @@
-                        -foo\\r
-                        +foo\\r\\n
-                        """),
-                List.of()));
-        assertCompareText(service, "", "", ResourceMatchLevel.PERFECT.match("target/b.txt"));
-        assertCompareText(service, "foo", "foo", ResourceMatchLevel.PERFECT.match("target/b.txt"));
-        assertCompareText(service, "foo\nbar", "foo\nbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
-        assertCompareText(service, "foo\rbar", "foo\rbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
-        assertCompareText(service, "foo\r\nbar", "foo\r\nbar", ResourceMatchLevel.PERFECT.match("target/b.txt"));
-    }
-
-    static void assertCompareText(ResourceMatchService service, String a, String b, ResourceMatch expected) throws IOException {
-        Path ap = Path.of("target/a.txt");
-        Path bp = Path.of("target/b.txt");
-        {
-            Resource ar = Resource.of(ap.toString().replace('\\', '/'), a.getBytes(StandardCharsets.UTF_8));
-            Resource br = Resource.of(bp.toString().replace('\\', '/'), b.getBytes(StandardCharsets.UTF_8));
-            ResourceMatch actual = service.compare(ar, br);
-            Assertions.assertThat(actual).isEqualTo(expected);
-        }
-        {
-
-            Files.write(ap, a.getBytes(StandardCharsets.UTF_8));
-            Files.write(bp, b.getBytes(StandardCharsets.UTF_8));
-
-            Resource ar = Resource.of(ap);
-            Resource br = Resource.of(bp);
-            ResourceMatch actual = service.compare(ar, br);
-            Assertions.assertThat(actual).isEqualTo(expected);
-        }
-    }
+public class ClassFileMatchServiceTest {
 
     @Test
     void classFileMatchService() throws IOException {
