@@ -11,9 +11,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -21,17 +21,23 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.l2x6.jrebuild.api.os.Arch;
-import org.l2x6.jrebuild.api.os.Os;
-import org.l2x6.jrebuild.api.os.Shell;
+
+import org.cliassured.CliAssured;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Ref;
+import org.l2x6.jrebuild.api.os.OsArch;
+import org.l2x6.jrebuild.api.os.Tool;
+import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRepository;
+import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildRequest;
 import org.l2x6.jrebuild.core.build.Reproducibility;
+import org.l2x6.jrebuild.core.build.Resource.PathResource;
+import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -50,21 +56,28 @@ import org.l2x6.pom.tuner.model.Gavtc;
  * }</pre>
  *
  */
-public record GitHubRebuildService(
+public record LocalRebuildService(
         Path cloneDirectory,
         Path buildServiceRootDirectory,
-        CompletableFuture<BuildMetadataLayout> lazyBuildMetadataLayout) {
+        CompletableFuture<BuildMetadataLayout> lazyBuildMetadataLayout,
+        LocalToolService tools,
+        ResourceMatchService matchService) {
 
     private static final DateTimeFormatter DIR_FORMAT = null;
 
-    static GitHubRebuildService of(
+    static LocalRebuildService of(
             Path cloneDirectory,
-            Path buildServiceRootDirectory, Executor executor) {
-        return new GitHubRebuildService(
+            Path buildServiceRootDirectory,
+            Executor executor,
+            LocalToolService tools,
+            ResourceMatchService matchService) {
+        return new LocalRebuildService(
                 cloneDirectory,
                 buildServiceRootDirectory,
                 CompletableFuture.supplyAsync(() -> BuildMetadataLayout.of(buildServiceRootDirectory.resolve("builds")),
-                        executor));
+                        executor),
+                tools,
+                matchService);
     }
 
     public BuildReport ensureBuilt(BuildRequest buildRequest) {
@@ -72,8 +85,6 @@ public record GitHubRebuildService(
     }
 
     public BuildReport ensureBuilt(BuildRequest buildRequest, Clock clock) {
-        /* Clone the build repo */
-
         /* Create or find the build directory */
         Path buildDir = getLayout().findBuildDirectory(buildRequest.buildGroup());
 
@@ -95,19 +106,116 @@ public record GitHubRebuildService(
 
     }
 
-    static BuildReport build(Path buildDir, BuildRequest buildRequest, Clock clock) {
-        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")));
-        String formattedTs = ts.format(DIR_FORMAT);
-        Path dir = buildDir.resolve(formattedTs);
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Could not create " + dir, e);
+    static BuildReport build(Path buildGroupDir, BuildRequest buildRequest, LocalToolService tools,
+            ResourceMatchService matchService, Clock clock) {
+        final FqScmRef scmRef = buildRequest.scmRef();
+        final ScmRepository repo = scmRef.repository();
+        if (!"git".equals(repo.type())) {
+            throw new IllegalStateException("Cannot checkout from SCM type " + repo.type());
+        }
+        OsArch currentOsArch = OsArch.current();
+        if (!currentOsArch.equals(buildRequest.osArch())) {
+            throw new IllegalStateException(
+                    "The current OS " + currentOsArch + " does not match the requested OS " + buildRequest.osArch());
         }
 
-        ScmRepository repo = buildRequest.scmRef().repository();
+        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")));
+        String formattedTs = ts.format(DIR_FORMAT);
+        Path buildDir = buildGroupDir.resolve(formattedTs);
+        Path deployDir = buildDir.resolve("deploy");
+        Path cloneDir = buildDir.resolve("clone");
+        try {
+            Files.createDirectories(deployDir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not create " + deployDir, e);
+        }
+        try {
+            Files.createDirectories(cloneDir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not create " + cloneDir, e);
+        }
 
-        throw new RuntimeException("unimplemented");
+        /* Install the tools */
+        String pathEnvVar = System.getenv("PATH");
+        String colon = System.getProperty("path.separator");
+        for (Tool tool : buildRequest.tools()) {
+            InstalledTool installed = tools.install(tool);
+            pathEnvVar = installed.executable().getParent().toString() + colon + pathEnvVar;
+        }
+
+        /* Checkout the sources */
+        String commitId = null;
+        try (Git git = GitUtils.cloneOrFetchAndReset(repo.uri(), scmRef.scmRef().name(), cloneDir, 1)) {
+            final Ref ref = git.getRepository().exactRef("HEAD");
+            commitId = ref.getObjectId().getName();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not fetch from " + repo.uri(), e);
+        }
+
+        /* Run the script */
+        List<String> cmd = buildRequest.shell().command(buildRequest.osArch(), buildRequest.buildScript());
+        CliAssured.command(cmd.get(0))
+                .args(cmd.subList(1, cmd.size()))
+                .cd(cloneDir)
+                .env("PATH", pathEnvVar)
+                .env("DEPLOYMENT_DIR", deployDir.toString())
+                .stderrToStdout()
+                .then()
+                .stdout()
+                .log()
+                .execute()
+                .assertSuccess();
+
+        /* Check if everything was deployed, report missing artifacts if needed */
+        Set<Gavtc> builtArtifacts = collectArtifacts(deployDir);
+        Map<Gavtc, ArtifactInfo> builtArtifactsMap = new LinkedHashMap<>();
+        buildRequest.buildGroup().artifacts().stream()
+        .filter(a -> !builtArtifacts.contains(a))
+        .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
+
+        Reproducibility foundReproducibility = null;
+
+        if (!builtArtifactsMap.isEmpty()) {
+            foundReproducibility = Reproducibility.UNBUILDABLE;
+        }
+
+        for (Gavtc builtArtifact : builtArtifacts) {
+            matchService.compare(null, org.l2x6.jrebuild.core.build.Resource.of(Path));
+        }
+
+        return new BuildReport(buildRequest, ts, foundReproducibility, builtArtifactsMap);
+    }
+
+    static Set<Gavtc> collectArtifacts(Path deployDir) {
+        Set<Gavtc> result = new TreeSet<Gavtc>();
+        try (Stream<Path> paths = Files.walk(deployDir)) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".pom"))
+                    .map(Path::getParent)
+                    .map(deployDir::resolve)
+                    .forEach(versionDir -> {
+                        try (Stream<Path> artifacts = Files.list(versionDir)) {
+                            artifacts
+                                    .filter(file -> {
+                                        String fileName = file.getFileName().toString();
+                                        return !fileName.endsWith(".asc")
+                                                && !fileName.endsWith(".md5")
+                                                && !fileName.endsWith(".sha1")
+                                                && !fileName.endsWith(".lastUpdated")
+                                                && !fileName.equals("_remote.repositories");
+                                    })
+                                    .map(versionDir::resolve)
+                                    .map(deployDir::relativize)
+                                    .map(Gavtc::of)
+                                    .forEach(result::add);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException("Could not list " + versionDir, e);
+                        }
+                    });
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not walk " + deployDir, e);
+        }
+        return Collections.unmodifiableSet(result);
     }
 
     static Stream<BuildReport> listReports(Path buildDir) throws IOException {
@@ -140,21 +248,14 @@ public record GitHubRebuildService(
     }
 
     static record BuildReport(
+            BuildRequest buildRequest,
             /** When the build was started */
             ZonedDateTime timeStamp,
             /**
              * Overall reproducibility aggregated over all
              */
             Reproducibility reproducibility,
-            Map<Gavtc, ArtifactInfo> artifacts,
-            Os os,
-            Arch arch,
-            String shell,
-            String cd,
-            String buildScript,
-            List<Tool> tools
-
-    ) {
+            Map<Gavtc, ArtifactInfo> builtArtifacts) {
 
         private static Comparator<BuildReport> BY_TIMESTAMP_COMPARATOR = Comparator.comparing(BuildReport::timeStamp);
 
@@ -164,46 +265,8 @@ public record GitHubRebuildService(
 
     }
 
-    static record Tool(
-            /** The command name, such as {@code mvn}, {@code java} without directory. Should be installed in PATH */
-            String executable,
-            String version,
-            /** Used esp. for Java; e.g. {@code temurin} or {@code corretto} */
-            String distribution,
-            Packager packager) {
-
-    }
-
-    public static interface Packager {
-        String name();
-
-        void installSelf(Os os, Arch arch, Shell shell, Consumer<Entry<String, String>> env);
-
-        void install(Tool tool, Consumer<Entry<String, String>> env);
-    }
-
-    public static enum WellKnownPackager implements Packager {
-        sdkman() {
-
-            @Override
-            public void installSelf(Os os, Arch arch, Shell shell, Consumer<Entry<String, String>> env) {
-                if (shell != Shell.BASH) {
-                    throw new IllegalArgumentException(
-                            "Cannot install SDKMAN on " + shell + " shell. Only " + Shell.BASH + " is supported");
-                }
-
-            }
-
-            @Override
-            public void install(Tool tool, Consumer<Entry<String, String>> env) {
-
-            }
-
-        };
-    }
-
     static record ArtifactInfo(
-            Reproducibility reproducibility) {
+            ResourceMatchLevel resourceMatchLevel) {
 
     }
 

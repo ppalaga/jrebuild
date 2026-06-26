@@ -31,6 +31,7 @@ import org.l2x6.jrebuild.api.util.ComparableVersion;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.Gavtc.Type;
 
 public class PncScmLocator extends AbstractScmLocator {
     private static final Logger log = Logger.getLogger(PncScmLocator.class);
@@ -81,10 +82,7 @@ public class PncScmLocator extends AbstractScmLocator {
     }
 
     static String toGatvc(Gavtc gav) {
-        String type = gav.getType();
-        if (type == null) {
-            type = "jar";
-        }
+        String type = gav.getType().getValueOrDefault();
         StringBuilder sb = new StringBuilder();
         gav.toGa().toString(sb)
                 .append(":").append(type)
@@ -122,7 +120,7 @@ public class PncScmLocator extends AbstractScmLocator {
 
     public List<FqScmRef> locate(Gav gav) {
         return cache.computeIfAbsent(gav, k -> {
-            Gavtc pomGav = k.toGavtc("pom", null);
+            Gavtc pomGav = k.toGavtc(Type.pom(), null);
             Optional<ComparableArtifactInfo> latestBuiltArtifact = latestBuiltArtifact(pomGav);
             if (latestBuiltArtifact.isPresent()) {
                 ArtifactInfo latestArtifactInfo = latestBuiltArtifact.get().artifact();

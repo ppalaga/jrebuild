@@ -39,6 +39,7 @@ import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader;
 import org.l2x6.jrebuild.core.mima.internal.CachingMavenModelReader.ModelData;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.Gavtc.Type;
 import org.l2x6.pom.tuner.model.GavtcsPattern;
 
 public class DependencyCollector {
@@ -183,7 +184,7 @@ public class DependencyCollector {
                 /* Predecessors axis */
                 if (resp.parent() != null) {
                     /* Ignore the super pom */
-                    final Gavtc gav = resp.parent().toGavtc("pom", null);
+                    final Gavtc gav = resp.parent().toGavtc(Type.pom(), null);
                     ResolvedArtifactNode.Builder builder = new ResolvedArtifactNode.Builder(DependencyAxis.PARENT, gav,
                             resp.repositories());
                     traverse(resp.parent(), resp.repositories(), builder::child);
@@ -211,7 +212,8 @@ public class DependencyCollector {
             if (dm != null && (deps = dm.getDependencies()) != null && !deps.isEmpty()) {
                 for (Dependency dep : deps) {
                     if ("import".equals(dep.getScope())) {
-                        Gavtc gav = new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getType(), null);
+                        Gavtc gav = new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), Type.of(dep.getType()),
+                                null);
                         ResolvedArtifactNode.Builder builder = new ResolvedArtifactNode.Builder(DependencyAxis.IMPORT, gav,
                                 repos);
                         if (!"pom".equals(dep.getType())) {
@@ -232,7 +234,7 @@ public class DependencyCollector {
             /* Predecessors axis */
             if (resp.parent() != null) {
                 /* Ignore the super pom */
-                Gavtc gav = resp.parent().toGavtc("pom", null);
+                Gavtc gav = resp.parent().toGavtc(Type.pom(), null);
                 ResolvedArtifactNode.Builder builder = new ResolvedArtifactNode.Builder(DependencyAxis.PARENT, gav, repos);
                 traverse(resp.parent(), repos, builder::child);
                 result.accept(builder);

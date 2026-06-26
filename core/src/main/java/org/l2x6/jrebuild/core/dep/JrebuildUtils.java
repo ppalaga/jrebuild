@@ -9,25 +9,29 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.Gavtc.Type;
 import org.l2x6.pom.tuner.model.Gavtcs;
 
 public class JrebuildUtils {
 
     public static Gavtcs toGavtcs(Dependency dep) {
-        return new Gavtcs(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getType(), dep.getClassifier(), null);
+        return new Gavtcs(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), Type.of(dep.getType()), dep.getClassifier(),
+                null);
     }
 
     public static Gavtc toGavtc(Dependency dep) {
-        return new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getType(), dep.getClassifier());
+        return new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), Type.of(dep.getType()), dep.getClassifier());
     }
 
     public static Artifact toAetherArtifact(Gavtc dep) {
         // String groupId, String artifactId, String classifier, String extension, String version
-        return new DefaultArtifact(dep.getGroupId(), dep.getArtifactId(), dep.getClassifier(), dep.getType(), dep.getVersion());
+        return new DefaultArtifact(dep.getGroupId(), dep.getArtifactId(), dep.getClassifier(),
+                dep.getType().getValueOrDefault(), dep.getVersion());
     }
 
     public static Gavtcs toGavtcs(Artifact dep) {
-        return new Gavtcs(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getExtension(), dep.getClassifier(),
+        return new Gavtcs(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), Type.of(dep.getExtension()),
+                dep.getClassifier(),
                 null);
     }
 
@@ -40,7 +44,8 @@ public class JrebuildUtils {
     }
 
     public static Gavtc toGavtc(Artifact dep) {
-        return new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getExtension(), dep.getClassifier());
+        return new Gavtc(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), Type.of(dep.getExtension()),
+                dep.getClassifier());
     }
 
 }

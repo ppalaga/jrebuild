@@ -50,7 +50,8 @@ public class ResolvedArtifactNode implements Comparable<ResolvedArtifactNode>, N
 
     @Override
     public int compareTo(ResolvedArtifactNode o) {
-        return Gavtc.groupFirstComparator().compare(gavtc, o.gavtc);
+        return Gavtc.groupFirstComparator(org.l2x6.pom.tuner.model.OptionalWithDefault.valueOrDefaultComparator())
+                .compare(gavtc, o.gavtc);
     }
 
     public String toString() {

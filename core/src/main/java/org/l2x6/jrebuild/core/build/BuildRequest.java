@@ -1,12 +1,16 @@
 package org.l2x6.jrebuild.core.build;
 
-import org.l2x6.jrebuild.api.os.Arch;
-import org.l2x6.jrebuild.api.os.Os;
+import java.util.List;
+import org.l2x6.jrebuild.api.os.OsArch;
+import org.l2x6.jrebuild.api.os.Shell;
+import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 
 public record BuildRequest(
-        Os os,
-        Arch arch,
+        OsArch osArch,
+        Shell shell,
+        List<Tool> tools,
+        String buildScript,
         BuildGroup buildGroup,
         FqScmRef scmRef,
         Reproducibility requiredReproducibility) {

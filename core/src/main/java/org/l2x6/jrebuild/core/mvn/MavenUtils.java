@@ -39,7 +39,7 @@ public class MavenUtils {
                 gavtc.getGroupId(),
                 gavtc.getArtifactId(),
                 gavtc.getClassifier(),
-                gavtc.getType(),
+                gavtc.getType().getValueOrDefault(),
                 gavtc.getVersion());
 
         final ArtifactRequest req = new ArtifactRequest().setRepositories(repositories).setArtifact(aetherArtifact);

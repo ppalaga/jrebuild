@@ -20,9 +20,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import org.apache.maven.model.building.ModelBuilder;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -31,9 +31,10 @@ import org.eclipse.aether.repository.WorkspaceRepository;
 import org.l2x6.jrebuild.core.mima.internal.JRebuildLookup;
 import org.l2x6.jrebuild.core.mima.internal.JrebuildModelBuilderFactory;
 import org.l2x6.pom.tuner.MavenSourceTree;
+import org.l2x6.pom.tuner.MavenSourceTree.ActiveProfiles;
 import org.l2x6.pom.tuner.model.Ga;
+import org.l2x6.pom.tuner.model.GaPattern;
 import org.l2x6.pom.tuner.model.Module;
-import org.l2x6.pom.tuner.model.Profile;
 
 public class JRebuildRuntime extends StandaloneStaticRuntime {
 
@@ -53,7 +54,7 @@ public class JRebuildRuntime extends StandaloneStaticRuntime {
         final DefaultRepositorySystemSession session = new DefaultRepositorySystemSession(ctx.repositorySystemSession());
         if (basedir != null) {
             final HashSet<String> profiles = new HashSet<String>(overrides.getActiveProfileIds());
-            session.setWorkspaceReader(new JRebuildWorkspace(basedir, profiles::contains));
+            session.setWorkspaceReader(new JRebuildWorkspace(basedir, profiles));
         }
         sessionCustomizer.accept(session);
         session.setReadOnly();
@@ -85,15 +86,17 @@ public class JRebuildRuntime extends StandaloneStaticRuntime {
     }
 
     static class JRebuildWorkspace implements WorkspaceReader {
-        private final Predicate<Profile> activeProfiles;
+        private final ActiveProfiles activeProfiles;
         private final Path projectDirectory;
         private volatile MavenSourceTree mavenSourceTree;
         private final Object lock = new Object();
         private final WorkspaceRepository repository = new WorkspaceRepository();
 
-        public JRebuildWorkspace(Path projectDirectory, Predicate<String> activeProfiles) {
+        public JRebuildWorkspace(Path projectDirectory, Set<String> activeProfiles) {
             this.projectDirectory = projectDirectory;
-            this.activeProfiles = p -> p.getId() == null || activeProfiles.test(p.getId());
+            this.activeProfiles = ActiveProfiles.builder()
+                    .add(GaPattern.matchAll(), profile -> profile.getId() == null || activeProfiles.contains(profile.getId()))
+                    .build();
         }
 
         @Override
