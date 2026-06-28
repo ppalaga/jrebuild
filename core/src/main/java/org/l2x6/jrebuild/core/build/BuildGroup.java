@@ -22,6 +22,7 @@ import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
 public class BuildGroup {
 
@@ -186,7 +187,7 @@ public class BuildGroup {
 
         public Builder(FqScmRef scmRef) {
             this.scmRef = scmRef;
-            this.artifacts = new TreeSet<>(Gavtc.groupFirstComparator());
+            this.artifacts = new TreeSet<>(Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
         }
 
         public FqScmRef scmRef() {

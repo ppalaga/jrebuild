@@ -15,6 +15,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import org.l2x6.jrebuild.core.tree.Visitor;
 import org.l2x6.jrebuild.pnc.PncScmLocator;
 import org.l2x6.pom.tuner.model.GavSet;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.OptionalWithDefault;
 import picocli.CommandLine;
 import picocli.CommandLine.Mixin;
 
@@ -163,6 +165,8 @@ public class FindPncBuildsCommand implements Runnable {
     }
 
     public static class PncInfoNode implements Node<PncInfoNode>, Comparable<PncInfoNode> {
+        private static final Comparator<Gavtc> COMPARATOR = Gavtc
+                .groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator());
         private final DependencyAxis axis;
         private final Gavtc gavtc;
         private final String latestPncVersion;
@@ -186,7 +190,7 @@ public class FindPncBuildsCommand implements Runnable {
 
         @Override
         public int compareTo(PncInfoNode o) {
-            return Gavtc.groupFirstComparator().compare(gavtc, o.gavtc);
+            return COMPARATOR.compare(gavtc, o.gavtc);
         }
 
         public String toString() {

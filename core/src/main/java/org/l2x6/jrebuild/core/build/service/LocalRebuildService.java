@@ -14,8 +14,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,7 +25,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.cliassured.CliAssured;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
@@ -36,10 +37,12 @@ import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildRequest;
 import org.l2x6.jrebuild.core.build.Reproducibility;
-import org.l2x6.jrebuild.core.build.Resource.PathResource;
+import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
+import org.l2x6.pom.tuner.MavenRepository;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.Gavtcf;
 
 /**
  * Layout:
@@ -102,7 +105,7 @@ public record LocalRebuildService(
             return availableBuild.get();
         }
 
-        return build(buildDir, buildRequest, clock);
+        return build(buildDir, buildRequest, tools, matchService, clock);
 
     }
 
@@ -167,11 +170,11 @@ public record LocalRebuildService(
                 .assertSuccess();
 
         /* Check if everything was deployed, report missing artifacts if needed */
-        Set<Gavtc> builtArtifacts = collectArtifacts(deployDir);
+        Map<Gavtc, String> builtArtifacts = collectArtifacts(deployDir);
         Map<Gavtc, ArtifactInfo> builtArtifactsMap = new LinkedHashMap<>();
         buildRequest.buildGroup().artifacts().stream()
-        .filter(a -> !builtArtifacts.contains(a))
-        .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
+                .filter(a -> !builtArtifacts.containsKey(a))
+                .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
 
         Reproducibility foundReproducibility = null;
 
@@ -179,43 +182,20 @@ public record LocalRebuildService(
             foundReproducibility = Reproducibility.UNBUILDABLE;
         }
 
-        for (Gavtc builtArtifact : builtArtifacts) {
-            matchService.compare(null, org.l2x6.jrebuild.core.build.Resource.of(Path));
+        for (Entry<Gavtc, String> en : builtArtifacts.entrySet()) {
+            matchService.compare(null, Resource.of(deployDir.resolve(en.getValue())));
         }
 
         return new BuildReport(buildRequest, ts, foundReproducibility, builtArtifactsMap);
     }
 
-    static Set<Gavtc> collectArtifacts(Path deployDir) {
-        Set<Gavtc> result = new TreeSet<Gavtc>();
-        try (Stream<Path> paths = Files.walk(deployDir)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".pom"))
-                    .map(Path::getParent)
-                    .map(deployDir::resolve)
-                    .forEach(versionDir -> {
-                        try (Stream<Path> artifacts = Files.list(versionDir)) {
-                            artifacts
-                                    .filter(file -> {
-                                        String fileName = file.getFileName().toString();
-                                        return !fileName.endsWith(".asc")
-                                                && !fileName.endsWith(".md5")
-                                                && !fileName.endsWith(".sha1")
-                                                && !fileName.endsWith(".lastUpdated")
-                                                && !fileName.equals("_remote.repositories");
-                                    })
-                                    .map(versionDir::resolve)
-                                    .map(deployDir::relativize)
-                                    .map(Gavtc::of)
-                                    .forEach(result::add);
-                        } catch (IOException e) {
-                            throw new UncheckedIOException("Could not list " + versionDir, e);
-                        }
-                    });
-        } catch (IOException e) {
-            throw new UncheckedIOException("Could not walk " + deployDir, e);
+    static Map<Gavtc, String> collectArtifacts(Path deployDir) {
+        MavenRepository repo = MavenRepository.local(deployDir);
+        Map<Gavtc, String> result = new TreeMap<>();
+        try (Stream<Gavtcf> gavs = repo.gavtcfStream()) {
+            gavs.forEach(a -> result.put(a.toGavtc(), a.getFile()));
         }
-        return Collections.unmodifiableSet(result);
+        return Collections.unmodifiableMap(result);
     }
 
     static Stream<BuildReport> listReports(Path buildDir) throws IOException {
