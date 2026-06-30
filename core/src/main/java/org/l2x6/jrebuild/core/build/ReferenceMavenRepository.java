@@ -289,14 +289,12 @@ public class ReferenceMavenRepository {
 
     /**
      * Extracts the 40-character hex SHA1 hash from a raw SHA1 file content string.
-     * Handles both plain hashes ({@code abc123...}) and the {@code hash  filename} format
-     * sometimes used by Maven repositories.
      *
      * @param  raw the raw content of a {@code .sha1} file
-     * @return     the trimmed SHA1 hash (first whitespace-delimited token)
+     * @return     the trimmed SHA1 hash
      */
     static String parseSha1(String raw) {
-        return raw.trim().split("\\s+")[0];
+        return raw.trim();
     }
 
     /**
