@@ -9,6 +9,8 @@ import io.vertx.core.file.OpenOptions;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.WebClient;
+import io.vertx.mutiny.ext.web.codec.BodyCodec;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -36,6 +38,7 @@ import org.l2x6.pom.tuner.model.Gavtcf;
 public class ReferenceMavenRepository {
 
     private static final OpenOptions READ_OPTIONS = new OpenOptions().setRead(true).setWrite(false).setCreate(false);
+    private static final OpenOptions WRITE_CREATE_OPTIONS = new OpenOptions();
 
     /** Base URI of the remote reference Maven repository, e.g. {@code https://repo1.maven.org/maven2} */
     private final String referenceRepositorybaseUri;
@@ -124,37 +127,34 @@ public class ReferenceMavenRepository {
                 /* Step 3-4: Check the reference repository for a cached artifact with a matching SHA1 */
                 existsAndSha1Matches(refArtifactPath, expectedSha1)
                         .chain(refMatches -> {
-                            if (refMatches) {
+                            if (refMatches.existsAndChecksumMatches()) {
                                 return Uni.createFrom().item(gavtc.toGavtcf(refArtifactPath));
                             }
                             /* Step 5-6: Check the local Maven repository for an artifact with a matching SHA1 */
                             return existsAndSha1Matches(localArtifactPath, expectedSha1)
                                     .chain(localMatches -> {
-                                        if (localMatches) {
+                                        if (localMatches.existsAndChecksumMatches()) {
                                             return Uni.createFrom().item(gavtc.toGavtcf(localArtifactPath));
                                         }
-                                        return fileSystem.exists(localArtifactPath.toString())
-                                                .chain(localExists -> {
-                                                    if (!localExists) {
-                                                        /*
-                                                         * Step 7: Artifact is not in the local Maven repo at all —
-                                                         * download it there and write Maven metadata so Maven 3.9.x
-                                                         * treats it as a properly downloaded artifact
-                                                         */
-                                                        return download(repoPath, localArtifactPath)
-                                                                .chain(() -> updateMavenMetadata(localArtifactPath,
-                                                                        expectedSha1))
-                                                                .map(v -> gavtc.toGavtcf(localArtifactPath));
-                                                    }
-                                                    /*
-                                                     * Step 8: Artifact exists in the local Maven repo but has a
-                                                     * different SHA1 (e.g. a local rebuild or a different version).
-                                                     * We must not overwrite it, so download the reference copy into the
-                                                     * JRebuild-private reference repository instead.
-                                                     */
-                                                    return download(repoPath, refArtifactPath)
-                                                            .map(v -> gavtc.toGavtcf(refArtifactPath));
-                                                });
+                                        if (!localMatches.exists()) {
+                                            /*
+                                             * Step 7: Artifact is not in the local Maven repo at all —
+                                             * download it there and write Maven metadata so Maven 3.9.x
+                                             * treats it as a properly downloaded artifact
+                                             */
+                                            return download(repoPath, localArtifactPath)
+                                                    .chain(() -> updateMavenMetadata(localArtifactPath,
+                                                            expectedSha1))
+                                                    .map(v -> gavtc.toGavtcf(localArtifactPath));
+                                        }
+                                        /*
+                                         * Step 8: Artifact exists in the local Maven repo but has a
+                                         * different SHA1 (e.g. a local rebuild or a different version).
+                                         * We must not overwrite it, so download the reference copy into the
+                                         * JRebuild-private reference repository instead.
+                                         */
+                                        return download(repoPath, refArtifactPath)
+                                                .map(v -> gavtc.toGavtcf(refArtifactPath));
                                     });
                         }));
     }
@@ -166,9 +166,11 @@ public class ReferenceMavenRepository {
      * @param  expectedSha1 the expected 40-character hex SHA1 hash
      * @return              a {@link Uni} emitting {@code true} if the file exists and its SHA1 matches
      */
-    private Uni<Boolean> existsAndSha1Matches(Path path, String expectedSha1) {
+    private Uni<ExistsAndChecksumMatches> existsAndSha1Matches(Path path, String expectedSha1) {
         return fileSystem.exists(path.toString())
-                .chain(exists -> exists ? sha1Matches(path, expectedSha1) : Uni.createFrom().item(false));
+                .chain(exists -> exists
+                        ? sha1Matches(path, expectedSha1).chain(sha1Matches -> ExistsAndChecksumMatches.of(exists, sha1Matches))
+                                : ExistsAndChecksumMatches.of(false, false));
     }
 
     /**
@@ -214,15 +216,24 @@ public class ReferenceMavenRepository {
      * @param  targetPath local filesystem path to write the downloaded bytes to
      * @return            a {@link Uni} that completes when the download and write are finished
      */
-    Uni<Void> download(String repoPath, Path targetPath) {
-        final String url = referenceRepositorybaseUri + "/" + repoPath;
-        return webClient.getAbs(url).send()
-                .chain(resp -> {
-                    if (resp.statusCode() != 200) {
-                        throw new RuntimeException("Failed to download " + url + ": HTTP " + resp.statusCode());
-                    }
-                    return writeBytes(targetPath, resp.body().getBytes());
-                });
+    Uni<Void> download(String repoPath, Path targetPath, String expectedSha1) {
+
+
+        fileSystem
+        .open(targetPath.toString(), WRITE_CREATE_OPTIONS)
+        .onItem().transformToUni(asyncFile -> {
+            final String url = referenceRepositorybaseUri + "/" + repoPath;
+            return webClient.getAbs(url)
+            .as(BodyCodec.pipe(asyncFile))
+            .send().chain(resp -> {
+                if (resp.statusCode() != 200) {
+                    return Uni.createFrom().failure(new RuntimeException(
+                            "Failed to download " + url + ": HTTP " + resp.statusCode()));
+                }
+                return null;
+            });
+        });
+
     }
 
     /**
@@ -334,6 +345,16 @@ public class ReferenceMavenRepository {
     Uni<String> readString(Path path) {
         return fileSystem.readFile(path.toString())
                 .map(buffer -> buffer.toString(StandardCharsets.UTF_8));
+    }
+
+    static record ExistsAndChecksumMatches(boolean exists, boolean checksumMatches) {
+        boolean existsAndChecksumMatches() {
+            return exists && checksumMatches;
+        }
+
+        public static Uni<ExistsAndChecksumMatches> of(Boolean exists, Boolean sha1Matches) {
+            return Uni.createFrom().item(new ExistsAndChecksumMatches(exists, sha1Matches));
+        }
     }
 
 }
