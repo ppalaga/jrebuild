@@ -77,23 +77,29 @@ public class ReferenceMavenRepository {
      * <ol>
      * <li>Checks whether the artifacts sha1 file is available in {@link #localReferenceMavenRepository} at
      * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
-     * <li>If it is not, it downloads it from {@code referenceRepositorybaseUri +"/"+ gavtc.getRepositoryPath() + ".sha1"}
+     * <li>If it is not, it downloads it from
+     * {@code referenceRepositorybaseUri +"/"+ gavtc.getRepositoryPath() + ".sha1"}
      * and stores it in {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
-     * <li>Checks whether {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath())} exists and whether its
+     * <li>Checks whether {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath())} exists and whether
+     * its
      * bytes have the same
-     * sha1 hash as the sha1 stored in {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
+     * sha1 hash as the sha1 stored in
+     * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
      * <li>If yes, return a {@link Gavtcf} constructed from {@code gavtc} and
      * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath())}
      * <li>If not, checks whether {@code localMavenRepository.resolve(gavtc.getRepositoryPath())} exists and whether its
      * bytes have the same
-     * sha1 hash as the sha1 stored in {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
+     * sha1 hash as the sha1 stored in
+     * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")}.
      * <li>If yes, return a {@link Gavtcf} constructed from {@code gavtc} and
      * {@code localMavenRepository.resolve(gavtc.getRepositoryPath())}
      * <li>If {@code localMavenRepository.resolve(gavtc.getRepositoryPath())} does not exist, download it from
      * {@code referenceRepositorybaseUri +"/"+ gavtc.getRepositoryPath()}
-     * and update all Maven metadata related to the freshly downloaded file, as if a recent Maven 3.9.x would download it.
+     * and update all Maven metadata related to the freshly downloaded file, as if a recent Maven 3.9.x would download
+     * it.
      * <li>If {@code localMavenRepository.resolve(gavtc.getRepositoryPath())} exists and but its bytes have a different
-     * sha1 hash as the one stored in {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")},
+     * sha1 hash as the one stored in
+     * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath() + ".sha1")},
      * then download
      * {@code referenceRepositorybaseUri +"/"+ gavtc.getRepositoryPath()} to
      * {@code localReferenceMavenRepository.resolve(gavtc.getRepositoryPath())}
@@ -128,18 +134,22 @@ public class ReferenceMavenRepository {
                                         return fileSystem.exists(localArtifactPath.toString())
                                                 .chain(localExists -> {
                                                     if (!localExists) {
-                                                        /* Step 7: Artifact is not in the local Maven repo at all —
+                                                        /*
+                                                         * Step 7: Artifact is not in the local Maven repo at all —
                                                          * download it there and write Maven metadata so Maven 3.9.x
-                                                         * treats it as a properly downloaded artifact */
+                                                         * treats it as a properly downloaded artifact
+                                                         */
                                                         return download(repoPath, localArtifactPath)
                                                                 .chain(() -> updateMavenMetadata(localArtifactPath,
                                                                         expectedSha1))
                                                                 .map(v -> gavtc.toGavtcf(localArtifactPath));
                                                     }
-                                                    /* Step 8: Artifact exists in the local Maven repo but has a
+                                                    /*
+                                                     * Step 8: Artifact exists in the local Maven repo but has a
                                                      * different SHA1 (e.g. a local rebuild or a different version).
                                                      * We must not overwrite it, so download the reference copy into the
-                                                     * JRebuild-private reference repository instead. */
+                                                     * JRebuild-private reference repository instead.
+                                                     */
                                                     return download(repoPath, refArtifactPath)
                                                             .map(v -> gavtc.toGavtcf(refArtifactPath));
                                                 });
@@ -180,11 +190,16 @@ public class ReferenceMavenRepository {
                     return webClient.getAbs(sha1Url).send()
                             .chain(resp -> {
                                 if (resp.statusCode() != 200) {
-                                    throw new RuntimeException(
-                                            "Failed to download " + sha1Url + ": HTTP " + resp.statusCode());
+                                    Uni.createFrom().failure(new RuntimeException(
+                                            "Failed to download " + sha1Url + ": HTTP " + resp.statusCode()));
                                 }
-                                final String sha1 = parseSha1(resp.bodyAsString());
-                                return writeBytes(sha1Path, sha1.getBytes(StandardCharsets.UTF_8))
+                                final Buffer body = resp.body();
+                                final String sha1 = parseSha1(body.toString());
+                                return fileSystem
+                                        .mkdirs(sha1Path.getParent().toString())
+                                        .chain(() -> fileSystem.writeFile(
+                                                sha1Path.toString(),
+                                                body))
                                         .replaceWith(sha1);
                             });
                 });
