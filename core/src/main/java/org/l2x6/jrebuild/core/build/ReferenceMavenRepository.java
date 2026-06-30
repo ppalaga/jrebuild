@@ -35,6 +35,8 @@ import org.l2x6.pom.tuner.model.Gavtcf;
  */
 public class ReferenceMavenRepository {
 
+    private static final OpenOptions READ_OPTIONS = new OpenOptions().setRead(true).setWrite(false).setCreate(false);
+
     /** Base URI of the remote reference Maven repository, e.g. {@code https://repo1.maven.org/maven2} */
     private final String referenceRepositorybaseUri;
 
@@ -275,7 +277,7 @@ public class ReferenceMavenRepository {
      */
     Uni<Boolean> sha1Matches(Path file, String expectedSha1) {
         return computeSha1(file)
-                .map(actual -> actual.equalsIgnoreCase(expectedSha1))
+                .map(actual -> actual.equals(expectedSha1))
                 .onFailure().recoverWithItem(false);
     }
 
@@ -286,8 +288,7 @@ public class ReferenceMavenRepository {
      * @return      a {@link Uni} emitting the 40-character lowercase hex SHA1 hash
      */
     Uni<String> computeSha1(Path file) {
-        final OpenOptions openOptions = new OpenOptions().setRead(true).setWrite(false).setCreate(false);
-        return fileSystem.open(file.toString(), openOptions)
+        return fileSystem.open(file.toString(), READ_OPTIONS)
                 .chain(asyncFile -> {
                     try {
                         final MessageDigest digest = MessageDigest.getInstance("SHA-1");
