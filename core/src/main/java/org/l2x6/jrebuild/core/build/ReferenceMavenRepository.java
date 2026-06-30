@@ -5,6 +5,7 @@
 package org.l2x6.jrebuild.core.build;
 
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.WebClient;
@@ -270,13 +271,18 @@ public class ReferenceMavenRepository {
      * @return      a {@link Uni} emitting the 40-character lowercase hex SHA1 hash
      */
     Uni<String> computeSha1(Path file) {
-        return fileSystem.readFile(file.toString())
-                .map(buffer -> {
+        final OpenOptions openOptions = new OpenOptions().setRead(true).setWrite(false).setCreate(false);
+        return fileSystem.open(file.toString(), openOptions)
+                .chain(asyncFile -> {
                     try {
                         final MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                        return HexFormat.of().formatHex(digest.digest(buffer.getBytes()));
+                        return asyncFile.toMulti()
+                                .onItem().invoke(buffer -> digest.update(buffer.getBytes()))
+                                .collect().last()
+                                .replaceWith(() -> HexFormat.of().formatHex(digest.digest()))
+                                .eventually(asyncFile::close);
                     } catch (NoSuchAlgorithmException e) {
-                        throw new RuntimeException(e);
+                        return asyncFile.close().replaceWith(Uni.createFrom().<String> failure(e));
                     }
                 });
     }
