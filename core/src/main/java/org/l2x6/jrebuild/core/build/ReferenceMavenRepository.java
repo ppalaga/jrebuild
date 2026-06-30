@@ -5,13 +5,11 @@
 package org.l2x6.jrebuild.core.build;
 
 import io.smallrye.mutiny.Uni;
+import io.vertx.mutiny.core.buffer.Buffer;
+import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.WebClient;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
@@ -53,19 +51,24 @@ public class ReferenceMavenRepository {
     /** Vert.x Mutiny {@link WebClient} used for all HTTP operations (downloading SHA1 files and artifacts) */
     private final WebClient webClient;
 
+    /** Vert.x Mutiny {@link FileSystem} used for all non-blocking file I/O operations */
+    private final FileSystem fileSystem;
+
     /**
      * @param referenceRepositorybaseUri    base URI of the remote reference Maven repository
      * @param localMavenRepository          root of the user's local Maven repository
      * @param localReferenceMavenRepository root of the JRebuild-private local reference repository
      * @param webClient                     Vert.x Mutiny {@link WebClient} for HTTP operations
+     * @param fileSystem                    Vert.x Mutiny {@link FileSystem} for non-blocking file I/O
      */
     public ReferenceMavenRepository(String referenceRepositorybaseUri, Path localMavenRepository,
-            Path localReferenceMavenRepository, WebClient webClient) {
+            Path localReferenceMavenRepository, WebClient webClient, FileSystem fileSystem) {
         super();
         this.referenceRepositorybaseUri = referenceRepositorybaseUri;
         this.localMavenRepository = localMavenRepository;
         this.localReferenceMavenRepository = localReferenceMavenRepository;
         this.webClient = webClient;
+        this.fileSystem = fileSystem;
     }
 
     /**
@@ -103,38 +106,56 @@ public class ReferenceMavenRepository {
     public Uni<Gavtcf> resolve(Gavtc gavtc) {
         final String repoPath = gavtc.getRepositoryPath();
         final Path sha1Path = localReferenceMavenRepository.resolve(repoPath + ".sha1");
+        final Path refArtifactPath = localReferenceMavenRepository.resolve(repoPath);
+        final Path localArtifactPath = localMavenRepository.resolve(repoPath);
 
         /* Step 1-2: Ensure the expected SHA1 hash is available locally (download from remote if missing) */
         return ensureSha1(sha1Path, repoPath)
-                .chain(expectedSha1 -> {
+                .chain(expectedSha1 ->
+                /* Step 3-4: Check the reference repository for a cached artifact with a matching SHA1 */
+                existsAndSha1Matches(refArtifactPath, expectedSha1)
+                        .chain(refMatches -> {
+                            if (refMatches) {
+                                return Uni.createFrom().item(gavtc.toGavtcf(refArtifactPath));
+                            }
+                            /* Step 5-6: Check the local Maven repository for an artifact with a matching SHA1 */
+                            return existsAndSha1Matches(localArtifactPath, expectedSha1)
+                                    .chain(localMatches -> {
+                                        if (localMatches) {
+                                            return Uni.createFrom().item(gavtc.toGavtcf(localArtifactPath));
+                                        }
+                                        return fileSystem.exists(localArtifactPath.toString())
+                                                .chain(localExists -> {
+                                                    if (!localExists) {
+                                                        /* Step 7: Artifact is not in the local Maven repo at all —
+                                                         * download it there and write Maven metadata so Maven 3.9.x
+                                                         * treats it as a properly downloaded artifact */
+                                                        return download(repoPath, localArtifactPath)
+                                                                .chain(() -> updateMavenMetadata(localArtifactPath,
+                                                                        expectedSha1))
+                                                                .map(v -> gavtc.toGavtcf(localArtifactPath));
+                                                    }
+                                                    /* Step 8: Artifact exists in the local Maven repo but has a
+                                                     * different SHA1 (e.g. a local rebuild or a different version).
+                                                     * We must not overwrite it, so download the reference copy into the
+                                                     * JRebuild-private reference repository instead. */
+                                                    return download(repoPath, refArtifactPath)
+                                                            .map(v -> gavtc.toGavtcf(refArtifactPath));
+                                                });
+                                    });
+                        }));
+    }
 
-                    /* Step 3-4: Check the reference repository for a cached artifact with a matching SHA1 */
-                    final Path refArtifactPath = localReferenceMavenRepository.resolve(repoPath);
-                    if (Files.exists(refArtifactPath) && sha1Matches(refArtifactPath, expectedSha1)) {
-                        return Uni.createFrom().item(gavtc.toGavtcf(refArtifactPath));
-                    }
-
-                    /* Step 5-6: Check the local Maven repository for an artifact with a matching SHA1 */
-                    final Path localArtifactPath = localMavenRepository.resolve(repoPath);
-                    if (Files.exists(localArtifactPath) && sha1Matches(localArtifactPath, expectedSha1)) {
-                        return Uni.createFrom().item(gavtc.toGavtcf(localArtifactPath));
-                    }
-
-                    /* Step 7: Artifact is not in the local Maven repo at all —
-                     * download it there and write Maven metadata so Maven 3.9.x treats it as a properly downloaded
-                     * artifact */
-                    if (!Files.exists(localArtifactPath)) {
-                        return download(repoPath, localArtifactPath)
-                                .invoke(() -> updateMavenMetadata(localArtifactPath, expectedSha1))
-                                .map(v -> gavtc.toGavtcf(localArtifactPath));
-                    }
-
-                    /* Step 8: Artifact exists in the local Maven repo but has a different SHA1 (e.g. a local
-                     * rebuild or a different version). We must not overwrite it, so download the reference copy
-                     * into the JRebuild-private reference repository instead. */
-                    return download(repoPath, refArtifactPath)
-                            .map(v -> gavtc.toGavtcf(refArtifactPath));
-                });
+    /**
+     * Checks whether the given file exists and its SHA1 hash matches the expected value.
+     *
+     * @param  path         the file to check
+     * @param  expectedSha1 the expected 40-character hex SHA1 hash
+     * @return              a {@link Uni} emitting {@code true} if the file exists and its SHA1 matches
+     */
+    private Uni<Boolean> existsAndSha1Matches(Path path, String expectedSha1) {
+        return fileSystem.exists(path.toString())
+                .chain(exists -> exists ? sha1Matches(path, expectedSha1) : Uni.createFrom().item(false));
     }
 
     /**
@@ -147,20 +168,24 @@ public class ReferenceMavenRepository {
      */
     Uni<String> ensureSha1(Path sha1Path, String repoPath) {
         /* SHA1 already cached locally — read and return it */
-        if (Files.exists(sha1Path)) {
-            return Uni.createFrom().item(() -> parseSha1(readString(sha1Path)));
-        }
-
-        /* Download the SHA1 file from the remote reference repository and cache it locally */
-        final String sha1Url = referenceRepositorybaseUri + "/" + repoPath + ".sha1";
-        return webClient.getAbs(sha1Url).send()
-                .map(resp -> {
-                    if (resp.statusCode() != 200) {
-                        throw new RuntimeException("Failed to download " + sha1Url + ": HTTP " + resp.statusCode());
+        return fileSystem.exists(sha1Path.toString())
+                .chain(exists -> {
+                    if (exists) {
+                        return readString(sha1Path).map(ReferenceMavenRepository::parseSha1);
                     }
-                    final String sha1 = parseSha1(resp.bodyAsString());
-                    writeBytes(sha1Path, sha1.getBytes(StandardCharsets.UTF_8));
-                    return sha1;
+
+                    /* Download the SHA1 file from the remote reference repository and cache it locally */
+                    final String sha1Url = referenceRepositorybaseUri + "/" + repoPath + ".sha1";
+                    return webClient.getAbs(sha1Url).send()
+                            .chain(resp -> {
+                                if (resp.statusCode() != 200) {
+                                    throw new RuntimeException(
+                                            "Failed to download " + sha1Url + ": HTTP " + resp.statusCode());
+                                }
+                                final String sha1 = parseSha1(resp.bodyAsString());
+                                return writeBytes(sha1Path, sha1.getBytes(StandardCharsets.UTF_8))
+                                        .replaceWith(sha1);
+                            });
                 });
     }
 
@@ -174,12 +199,11 @@ public class ReferenceMavenRepository {
     Uni<Void> download(String repoPath, Path targetPath) {
         final String url = referenceRepositorybaseUri + "/" + repoPath;
         return webClient.getAbs(url).send()
-                .map(resp -> {
+                .chain(resp -> {
                     if (resp.statusCode() != 200) {
                         throw new RuntimeException("Failed to download " + url + ": HTTP " + resp.statusCode());
                     }
-                    writeBytes(targetPath, resp.body().getBytes());
-                    return null;
+                    return writeBytes(targetPath, resp.body().getBytes());
                 });
     }
 
@@ -192,41 +216,38 @@ public class ReferenceMavenRepository {
      * internal format</li>
      * </ul>
      *
-     * @param artifactPath path of the freshly downloaded artifact file
-     * @param sha1         the known SHA1 hash of the artifact
+     * @param  artifactPath path of the freshly downloaded artifact file
+     * @param  sha1         the known SHA1 hash of the artifact
+     * @return              a {@link Uni} that completes when all metadata has been written
      */
-    static void updateMavenMetadata(Path artifactPath, String sha1) {
+    Uni<Void> updateMavenMetadata(Path artifactPath, String sha1) {
         /* Write the .sha1 companion file (e.g. foo-1.0.jar.sha1) next to the artifact */
         final Path sha1File = artifactPath.resolveSibling(artifactPath.getFileName() + ".sha1");
-        writeBytes(sha1File, sha1.getBytes(StandardCharsets.UTF_8));
-
-        /* Write or append to _remote.repositories so Maven knows this artifact came from a remote repo.
-         * Format follows the Maven Resolver internal convention:
-         *   #NOTE: This is a Maven Resolver internal implementation file, ...
-         *   #<timestamp>
-         *   <filename>>central=
-         */
         final Path remoteReposFile = artifactPath.getParent().resolve("_remote.repositories");
         final String fileName = artifactPath.getFileName().toString();
         final String entry = fileName + ">central=\n";
-        try {
-            if (Files.exists(remoteReposFile)) {
-                /* Append only if this artifact is not already tracked */
-                final String existing = Files.readString(remoteReposFile, StandardCharsets.UTF_8);
-                if (!existing.contains(fileName + ">")) {
-                    Files.writeString(remoteReposFile, entry, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-                }
-            } else {
-                /* Create the file with the standard header and the first entry */
-                final String header = "#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.\n"
-                        + "#" + DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss zzz yyyy", Locale.US)
-                                .format(ZonedDateTime.now())
-                        + "\n";
-                Files.writeString(remoteReposFile, header + entry, StandardCharsets.UTF_8);
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+
+        return writeBytes(sha1File, sha1.getBytes(StandardCharsets.UTF_8))
+                .chain(() -> fileSystem.exists(remoteReposFile.toString()))
+                .chain(exists -> {
+                    if (exists) {
+                        /* Append only if this artifact is not already tracked */
+                        return readString(remoteReposFile)
+                                .chain(existing -> {
+                                    if (!existing.contains(fileName + ">")) {
+                                        return fileSystem.writeFile(remoteReposFile.toString(),
+                                                Buffer.buffer(existing + entry));
+                                    }
+                                    return Uni.createFrom().voidItem();
+                                });
+                    }
+                    /* Create the file with the standard header and the first entry */
+                    final String header = "#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.\n"
+                            + "#" + DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss zzz yyyy", Locale.US)
+                                    .format(ZonedDateTime.now())
+                            + "\n";
+                    return fileSystem.writeFile(remoteReposFile.toString(), Buffer.buffer(header + entry));
+                });
     }
 
     /**
@@ -234,33 +255,30 @@ public class ReferenceMavenRepository {
      *
      * @param  file         the file to hash
      * @param  expectedSha1 the expected 40-character hex SHA1 hash
-     * @return              {@code true} if the file exists and its SHA1 matches (case-insensitive), {@code false} otherwise
+     * @return              a {@link Uni} emitting {@code true} if the file's SHA1 matches (case-insensitive)
      */
-    static boolean sha1Matches(Path file, String expectedSha1) {
-        try {
-            return computeSha1(file).equalsIgnoreCase(expectedSha1);
-        } catch (UncheckedIOException e) {
-            return false;
-        }
+    Uni<Boolean> sha1Matches(Path file, String expectedSha1) {
+        return computeSha1(file)
+                .map(actual -> actual.equalsIgnoreCase(expectedSha1))
+                .onFailure().recoverWithItem(false);
     }
 
     /**
      * Computes the SHA-1 hash of a file's contents.
      *
-     * @param  file                 the file to hash
-     * @return                      the 40-character lowercase hex SHA1 hash
-     * @throws UncheckedIOException if reading the file fails
+     * @param  file the file to hash
+     * @return      a {@link Uni} emitting the 40-character lowercase hex SHA1 hash
      */
-    static String computeSha1(Path file) {
-        try {
-            final byte[] bytes = Files.readAllBytes(file);
-            final MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+    Uni<String> computeSha1(Path file) {
+        return fileSystem.readFile(file.toString())
+                .map(buffer -> {
+                    try {
+                        final MessageDigest digest = MessageDigest.getInstance("SHA-1");
+                        return HexFormat.of().formatHex(digest.digest(buffer.getBytes()));
+                    } catch (NoSuchAlgorithmException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
     }
 
     /**
@@ -278,32 +296,24 @@ public class ReferenceMavenRepository {
     /**
      * Writes the given bytes to a file, creating parent directories as needed.
      *
-     * @param  path                 the file to write
-     * @param  bytes                the content to write
-     * @throws UncheckedIOException if an I/O error occurs
+     * @param  path  the file to write
+     * @param  bytes the content to write
+     * @return       a {@link Uni} that completes when the write is finished
      */
-    static void writeBytes(Path path, byte[] bytes) {
-        try {
-            Files.createDirectories(path.getParent());
-            Files.write(path, bytes);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    Uni<Void> writeBytes(Path path, byte[] bytes) {
+        return fileSystem.mkdirs(path.getParent().toString())
+                .chain(() -> fileSystem.writeFile(path.toString(), Buffer.buffer(bytes)));
     }
 
     /**
      * Reads the entire content of a file as a UTF-8 string.
      *
-     * @param  path                 the file to read
-     * @return                      the file content as a string
-     * @throws UncheckedIOException if an I/O error occurs
+     * @param  path the file to read
+     * @return      a {@link Uni} emitting the file content as a string
      */
-    static String readString(Path path) {
-        try {
-            return Files.readString(path, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    Uni<String> readString(Path path) {
+        return fileSystem.readFile(path.toString())
+                .map(buffer -> buffer.toString(StandardCharsets.UTF_8));
     }
 
 }

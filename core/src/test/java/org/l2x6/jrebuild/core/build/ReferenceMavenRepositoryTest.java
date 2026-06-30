@@ -59,7 +59,8 @@ public class ReferenceMavenRepositoryTest {
                     .get();
 
             final String referenceRepoBaseUri = "http://localhost:" + server.actualPort();
-            webClient = WebClient.create(new Vertx(coreVertx));
+            final Vertx vertx = new Vertx(coreVertx);
+            webClient = WebClient.create(vertx);
 
             Gavtc gavtc = Gavtc.of("org.l2x6.pom-tuner:pom-tuner:4.10.0:pom");
             byte[] artifactContent = Files.readAllBytes(remoteRepoDir.resolve(gavtc.getRepositoryPath()));
@@ -79,7 +80,7 @@ public class ReferenceMavenRepositoryTest {
             Assertions.assertThat(localMavenRepo.resolve(gavtc.getRepositoryPath())).doesNotExist();
 
             ReferenceMavenRepository repo = new ReferenceMavenRepository(
-                    referenceRepoBaseUri, localMavenRepo, localRefRepo, webClient);
+                    referenceRepoBaseUri, localMavenRepo, localRefRepo, webClient, vertx.fileSystem());
             {
                 Gavtcf result = repo.resolve(gavtc).await().indefinitely();
 
