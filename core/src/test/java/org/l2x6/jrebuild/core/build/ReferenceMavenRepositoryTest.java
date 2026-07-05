@@ -41,14 +41,9 @@ public class ReferenceMavenRepositoryTest {
                         String path = req.path().substring(1);
                         Path file = remoteRepoDir.resolve(path);
                         if (Files.exists(file)) {
-                            try {
-                                byte[] content = Files.readAllBytes(file);
-                                req.response()
-                                        .putHeader("Content-Type", "application/octet-stream")
-                                        .end(io.vertx.core.buffer.Buffer.buffer(content));
-                            } catch (IOException e) {
-                                req.response().setStatusCode(500).end();
-                            }
+                            req.response()
+                                    .putHeader("Content-Type", "application/octet-stream")
+                                    .sendFile(file.toString());
                         } else {
                             req.response().setStatusCode(404).end();
                         }
@@ -150,7 +145,7 @@ public class ReferenceMavenRepositoryTest {
     private void assertResult(Path expectedRepo, Gavtc gavtc, byte[] expectedContent, Gavtcf actual) {
         actual.toGavtc().equals(gavtc);
         Assertions.assertThat(actual.getFile())
-                .isEqualTo(expectedRepo.resolve(gavtc.getRepositoryPath()).toString().replace('\\', '/'));
+                .isEqualTo(expectedRepo.resolve(gavtc.getRepositoryPath()));
         Assertions.assertThat(actual.getFile())
                 .hasBinaryContent(expectedContent);
     }

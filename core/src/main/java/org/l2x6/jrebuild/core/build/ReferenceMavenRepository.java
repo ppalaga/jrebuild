@@ -218,7 +218,8 @@ public class ReferenceMavenRepository {
      */
     Uni<Void> download(String repoPath, Path targetPath, String expectedSha1) {
         return fileSystem
-                .open(targetPath.toString(), WRITE_CREATE_OPTIONS)
+                .mkdirs(targetPath.getParent().toString())
+                .chain(() -> fileSystem.open(targetPath.toString(), WRITE_CREATE_OPTIONS))
                 .onItem().transformToUni(asyncFile -> {
                     final String url = referenceRepositorybaseUri + "/" + repoPath;
                     return webClient.getAbs(url)
