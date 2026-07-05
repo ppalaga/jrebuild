@@ -5,9 +5,13 @@
 package org.l2x6.jrebuild.core.build;
 
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.core.file.FileSystem;
+import io.vertx.mutiny.core.streams.WriteStream;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import io.vertx.mutiny.ext.web.codec.BodyCodec;
 import java.nio.charset.StandardCharsets;
@@ -222,12 +226,26 @@ public class ReferenceMavenRepository {
                 .chain(() -> fileSystem.open(targetPath.toString(), WRITE_CREATE_OPTIONS))
                 .onItem().transformToUni(asyncFile -> {
                     final String url = referenceRepositorybaseUri + "/" + repoPath;
+                    final MessageDigest digest;
+                    try {
+                        digest = MessageDigest.getInstance("SHA-1");
+                    } catch (NoSuchAlgorithmException e) {
+                        return asyncFile.close().replaceWith(Uni.createFrom().<Void> failure(e));
+                    }
+                    WriteStream<Buffer> sha1Stream = WriteStream
+                            .newInstance(new DigestWriteStream(asyncFile.getDelegate(), digest));
                     return webClient.getAbs(url)
-                            .as(BodyCodec.pipe(asyncFile))
+                            .as(BodyCodec.pipe(sha1Stream))
                             .send().chain(resp -> {
                                 if (resp.statusCode() != 200) {
                                     return Uni.createFrom().failure(new RuntimeException(
                                             "Failed to download " + url + ": HTTP " + resp.statusCode()));
+                                }
+                                final String actualSha1 = HexFormat.of().formatHex(digest.digest());
+                                if (!actualSha1.equals(expectedSha1)) {
+                                    return Uni.createFrom().failure(new IllegalStateException(
+                                            "SHA1 mismatch for " + url + ": expected " + expectedSha1
+                                                    + " but got " + actualSha1));
                                 }
                                 return Uni.createFrom().voidItem();
                             });
@@ -343,6 +361,57 @@ public class ReferenceMavenRepository {
     Uni<String> readString(Path path) {
         return fileSystem.readFile(path.toString())
                 .map(buffer -> buffer.toString(StandardCharsets.UTF_8));
+    }
+
+    static class DigestWriteStream
+            implements io.vertx.core.streams.WriteStream<io.vertx.core.buffer.Buffer> {
+        private final io.vertx.core.file.AsyncFile delegate;
+        private final MessageDigest digest;
+
+        DigestWriteStream(io.vertx.core.file.AsyncFile delegate, MessageDigest digest) {
+            this.delegate = delegate;
+            this.digest = digest;
+        }
+
+        @Override
+        public DigestWriteStream exceptionHandler(Handler<Throwable> handler) {
+            delegate.exceptionHandler(handler);
+            return this;
+        }
+
+        @Override
+        public Future<Void> write(io.vertx.core.buffer.Buffer data) {
+            digest.update(data.getBytes());
+            return delegate.write(data);
+        }
+
+        @Override
+        public void write(io.vertx.core.buffer.Buffer data, Handler<AsyncResult<Void>> handler) {
+            digest.update(data.getBytes());
+            delegate.write(data, handler);
+        }
+
+        @Override
+        public void end(Handler<AsyncResult<Void>> handler) {
+            delegate.end(handler);
+        }
+
+        @Override
+        public DigestWriteStream setWriteQueueMaxSize(int maxSize) {
+            delegate.setWriteQueueMaxSize(maxSize);
+            return this;
+        }
+
+        @Override
+        public boolean writeQueueFull() {
+            return delegate.writeQueueFull();
+        }
+
+        @Override
+        public DigestWriteStream drainHandler(Handler<Void> handler) {
+            delegate.drainHandler(handler);
+            return this;
+        }
     }
 
     static record ExistsAndChecksumMatches(boolean exists, boolean checksumMatches) {
