@@ -5,6 +5,8 @@
 package org.l2x6.jrebuild.api.os;
 
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.function.Consumer;
 
 public record Tool(
         /** Such as {@code sdkman} */
@@ -21,6 +23,9 @@ public record Tool(
         return distribution == null ? version : (version + "-" + distribution);
     }
 
-    public static record InstalledTool(Tool tool, Path executable) {
+    public static record InstalledTool(Tool tool, Path executable, Collection<String> pathEnvironmentVariableEntries) {
+        public void preparePathEnvironmentVariable(Consumer<String> pathEnvironmentVariable) {
+            pathEnvironmentVariableEntries.forEach(pathEnvironmentVariable::accept);
+        }
     }
 }

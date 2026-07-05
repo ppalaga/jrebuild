@@ -10,7 +10,6 @@ import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import io.vertx.mutiny.ext.web.codec.BodyCodec;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -115,7 +114,7 @@ public class ReferenceMavenRepository {
      * @param  gavtc the {@link Gavtc} to resolve
      * @return       a {@link Uni} that emits a {@link Gavtcf} pointing to the resolved artifact file
      */
-    public Uni<Gavtcf> resolve(Gavtc gavtc) {
+    public Uni<Gavtcf> resolve(final Gavtc gavtc) {
         final String repoPath = gavtc.getRepositoryPath();
         final Path sha1Path = localReferenceMavenRepository.resolve(repoPath + ".sha1");
         final Path refArtifactPath = localReferenceMavenRepository.resolve(repoPath);
@@ -137,15 +136,16 @@ public class ReferenceMavenRepository {
                                             return Uni.createFrom().item(gavtc.toGavtcf(localArtifactPath));
                                         }
                                         if (!localMatches.exists()) {
+                                            Uni<Gavtcf> result = download(repoPath, localArtifactPath, expectedSha1)
+                                                    .chain(() -> updateMavenMetadata(localArtifactPath,
+                                                            expectedSha1))
+                                                    .map(v -> gavtc.toGavtcf(localArtifactPath));
                                             /*
                                              * Step 7: Artifact is not in the local Maven repo at all —
                                              * download it there and write Maven metadata so Maven 3.9.x
                                              * treats it as a properly downloaded artifact
                                              */
-                                            return download(repoPath, localArtifactPath)
-                                                    .chain(() -> updateMavenMetadata(localArtifactPath,
-                                                            expectedSha1))
-                                                    .map(v -> gavtc.toGavtcf(localArtifactPath));
+                                            return result;
                                         }
                                         /*
                                          * Step 8: Artifact exists in the local Maven repo but has a
@@ -153,7 +153,7 @@ public class ReferenceMavenRepository {
                                          * We must not overwrite it, so download the reference copy into the
                                          * JRebuild-private reference repository instead.
                                          */
-                                        return download(repoPath, refArtifactPath)
+                                        return download(repoPath, refArtifactPath, expectedSha1)
                                                 .map(v -> gavtc.toGavtcf(refArtifactPath));
                                     });
                         }));
@@ -170,7 +170,7 @@ public class ReferenceMavenRepository {
         return fileSystem.exists(path.toString())
                 .chain(exists -> exists
                         ? sha1Matches(path, expectedSha1).chain(sha1Matches -> ExistsAndChecksumMatches.of(exists, sha1Matches))
-                                : ExistsAndChecksumMatches.of(false, false));
+                        : ExistsAndChecksumMatches.of(false, false));
     }
 
     /**
@@ -217,23 +217,20 @@ public class ReferenceMavenRepository {
      * @return            a {@link Uni} that completes when the download and write are finished
      */
     Uni<Void> download(String repoPath, Path targetPath, String expectedSha1) {
-
-
-        fileSystem
-        .open(targetPath.toString(), WRITE_CREATE_OPTIONS)
-        .onItem().transformToUni(asyncFile -> {
-            final String url = referenceRepositorybaseUri + "/" + repoPath;
-            return webClient.getAbs(url)
-            .as(BodyCodec.pipe(asyncFile))
-            .send().chain(resp -> {
-                if (resp.statusCode() != 200) {
-                    return Uni.createFrom().failure(new RuntimeException(
-                            "Failed to download " + url + ": HTTP " + resp.statusCode()));
-                }
-                return null;
-            });
-        });
-
+        return fileSystem
+                .open(targetPath.toString(), WRITE_CREATE_OPTIONS)
+                .onItem().transformToUni(asyncFile -> {
+                    final String url = referenceRepositorybaseUri + "/" + repoPath;
+                    return webClient.getAbs(url)
+                            .as(BodyCodec.pipe(asyncFile))
+                            .send().chain(resp -> {
+                                if (resp.statusCode() != 200) {
+                                    return Uni.createFrom().failure(new RuntimeException(
+                                            "Failed to download " + url + ": HTTP " + resp.statusCode()));
+                                }
+                                return Uni.createFrom().voidItem();
+                            });
+                });
     }
 
     /**

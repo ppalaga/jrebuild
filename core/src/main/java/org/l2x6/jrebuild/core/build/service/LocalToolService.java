@@ -1,11 +1,12 @@
 package org.l2x6.jrebuild.core.build.service;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.cliassured.sdkman.InstalledCandidate;
 import org.cliassured.sdkman.Sdk;
-import org.cliassured.sdkman.SdkSpec;
 import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.Packager;
 import org.l2x6.jrebuild.api.os.Tool;
@@ -45,23 +46,24 @@ public class LocalToolService {
 
     public static class Sdkman implements Packager {
 
-        private final SdkSpec sdk;
+        private final Sdk sdk;
 
         public Sdkman(Path cacheDir) {
             super();
-            sdk = Sdk.home(cacheDir).installSdkmanIfNeeded();
+            sdk = org.cliassured.sdkman.Sdkman.home(cacheDir).installIfNeeded().sdk();
         }
 
         @Override
         public InstalledTool install(Tool tool) {
             final String versionDist = tool.version() + (tool.distribution() != null ? ("-" + tool.distribution()) : "");
-            InstalledCandidate installedTool = sdk.installIfNeeded(tool.name(), versionDist);
+            InstalledCandidate installedTool = sdk.installCandidateIfNeeded(tool.name(), versionDist);
             String binName = tool.executable() + Os.current().executableSuffix();
-            Path toolExecutable = installedTool.findBinary(binName)
-                    .orElseThrow(
-                            () -> new IllegalStateException("Could not find " + binName + " in " + installedTool.bin()));
-            ;
-            return new InstalledTool(tool, toolExecutable);
+            final Path binDir = installedTool.home().resolve("bin");
+            Path toolExecutable = binDir.resolve(binName);
+            if (!Files.isRegularFile(toolExecutable)) {
+                throw new IllegalStateException("Could not find " + binName + " in " + binDir);
+            }
+            return new InstalledTool(tool, toolExecutable, List.of(binDir.toString()));
         }
 
         @Override

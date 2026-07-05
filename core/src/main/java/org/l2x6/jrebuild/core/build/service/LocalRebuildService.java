@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
@@ -138,13 +139,15 @@ public record LocalRebuildService(
             throw new UncheckedIOException("Could not create " + cloneDir, e);
         }
 
-        /* Install the tools */
-        String pathEnvVar = System.getenv("PATH");
+        /* Install the tools and prepare the PATH env var */
         String colon = System.getProperty("path.separator");
+        StringJoiner joiner = new StringJoiner(colon);
         for (Tool tool : buildRequest.tools()) {
             InstalledTool installed = tools.install(tool);
-            pathEnvVar = installed.executable().getParent().toString() + colon + pathEnvVar;
+            installed.preparePathEnvironmentVariable(joiner::add);
         }
+        joiner.add(System.getenv("PATH"));
+        final String pathEnvVar = joiner.toString();
 
         /* Checkout the sources */
         String commitId = null;
@@ -170,7 +173,7 @@ public record LocalRebuildService(
                 .assertSuccess();
 
         /* Check if everything was deployed, report missing artifacts if needed */
-        Map<Gavtc, String> builtArtifacts = collectArtifacts(deployDir);
+        Map<Gavtc, Path> builtArtifacts = collectArtifacts(deployDir);
         Map<Gavtc, ArtifactInfo> builtArtifactsMap = new LinkedHashMap<>();
         buildRequest.buildGroup().artifacts().stream()
                 .filter(a -> !builtArtifacts.containsKey(a))
@@ -182,16 +185,16 @@ public record LocalRebuildService(
             foundReproducibility = Reproducibility.UNBUILDABLE;
         }
 
-        for (Entry<Gavtc, String> en : builtArtifacts.entrySet()) {
+        for (Entry<Gavtc, Path> en : builtArtifacts.entrySet()) {
             matchService.compare(null, Resource.of(deployDir.resolve(en.getValue())));
         }
 
         return new BuildReport(buildRequest, ts, foundReproducibility, builtArtifactsMap);
     }
 
-    static Map<Gavtc, String> collectArtifacts(Path deployDir) {
+    static Map<Gavtc, Path> collectArtifacts(Path deployDir) {
         MavenRepository repo = MavenRepository.local(deployDir);
-        Map<Gavtc, String> result = new TreeMap<>();
+        Map<Gavtc, Path> result = new TreeMap<>();
         try (Stream<Gavtcf> gavs = repo.gavtcfStream()) {
             gavs.forEach(a -> result.put(a.toGavtc(), a.getFile()));
         }

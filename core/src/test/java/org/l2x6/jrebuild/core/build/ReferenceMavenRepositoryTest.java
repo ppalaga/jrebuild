@@ -151,7 +151,7 @@ public class ReferenceMavenRepositoryTest {
         actual.toGavtc().equals(gavtc);
         Assertions.assertThat(actual.getFile())
                 .isEqualTo(expectedRepo.resolve(gavtc.getRepositoryPath()).toString().replace('\\', '/'));
-        Assertions.assertThat(Path.of(actual.getFile()))
+        Assertions.assertThat(actual.getFile())
                 .hasBinaryContent(expectedContent);
     }
 

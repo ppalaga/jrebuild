@@ -17,7 +17,8 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.UUID;
-import org.cliassured.mvn.Mvn;
+import org.cliassured.CommandSpec;
+import org.cliassured.maven.Maven;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RepositoryPolicy;
 
@@ -75,7 +76,7 @@ public class JrebuildTestUtils {
                 throw new UncheckedIOException(e);
             }
 
-            Mvn mvn = Mvn.fromMvnw().installIfNeeded();
+            CommandSpec mvn = Maven.fromMvnw().installIfNeeded().mvn();
 
             mvn
                     .args("deploy", "-DaltDeploymentRepository=local::" + deploymentRepo.toUri().toString())
