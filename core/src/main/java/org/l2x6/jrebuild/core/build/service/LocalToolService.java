@@ -1,13 +1,11 @@
 package org.l2x6.jrebuild.core.build.service;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.cliassured.sdkman.InstalledCandidate;
 import org.cliassured.sdkman.Sdk;
-import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.Packager;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
@@ -57,13 +55,8 @@ public class LocalToolService {
         public InstalledTool install(Tool tool) {
             final String versionDist = tool.version() + (tool.distribution() != null ? ("-" + tool.distribution()) : "");
             InstalledCandidate installedTool = sdk.installCandidateIfNeeded(tool.name(), versionDist);
-            String binName = tool.executable() + Os.current().executableSuffix();
             final Path binDir = installedTool.home().resolve("bin");
-            Path toolExecutable = binDir.resolve(binName);
-            if (!Files.isRegularFile(toolExecutable)) {
-                throw new IllegalStateException("Could not find " + binName + " in " + binDir);
-            }
-            return new InstalledTool(tool, toolExecutable, List.of(binDir.toString()));
+            return new InstalledTool(tool, List.of(binDir.toString()));
         }
 
         @Override
