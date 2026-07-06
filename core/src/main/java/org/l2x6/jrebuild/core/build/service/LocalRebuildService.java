@@ -40,10 +40,15 @@ import org.l2x6.jrebuild.core.build.BuildRequest;
 import org.l2x6.jrebuild.core.build.Reproducibility;
 import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
+import org.l2x6.jrebuild.core.maven.LocalMavenRepository;
 import org.l2x6.pom.tuner.MavenRepository;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
+
+import io.smallrye.mutiny.Multi;
+import io.vertx.mutiny.core.Vertx;
+import io.vertx.mutiny.core.file.FileSystem;
 
 /**
  * Layout:
@@ -61,6 +66,7 @@ import org.l2x6.pom.tuner.model.Gavtcf;
  *
  */
 public record LocalRebuildService(
+        Vertx vertx,
         Path cloneDirectory,
         Path buildServiceRootDirectory,
         CompletableFuture<BuildMetadataLayout> lazyBuildMetadataLayout,
@@ -70,12 +76,14 @@ public record LocalRebuildService(
     private static final DateTimeFormatter DIR_FORMAT = null;
 
     static LocalRebuildService of(
+            Vertx vertx,
             Path cloneDirectory,
             Path buildServiceRootDirectory,
             Executor executor,
             LocalToolService tools,
             ResourceMatchService matchService) {
         return new LocalRebuildService(
+                vertx,
                 cloneDirectory,
                 buildServiceRootDirectory,
                 CompletableFuture.supplyAsync(() -> BuildMetadataLayout.of(buildServiceRootDirectory.resolve("builds")),
@@ -110,7 +118,7 @@ public record LocalRebuildService(
 
     }
 
-    static BuildReport build(Path buildGroupDir, BuildRequest buildRequest, LocalToolService tools,
+    static BuildReport build(Vertx vertx, Path buildGroupDir, BuildRequest buildRequest, LocalToolService tools,
             ResourceMatchService matchService, Clock clock) {
         final FqScmRef scmRef = buildRequest.scmRef();
         final ScmRepository repo = scmRef.repository();
@@ -173,32 +181,26 @@ public record LocalRebuildService(
                 .assertSuccess();
 
         /* Check if everything was deployed, report missing artifacts if needed */
-        Map<Gavtc, Path> builtArtifacts = collectArtifacts(deployDir);
+        Multi<Gavtcf> builtArtifacts = new LocalMavenRepository(deployDir, vertx.fileSystem()).gavtcfStream();
         Map<Gavtc, ArtifactInfo> builtArtifactsMap = new LinkedHashMap<>();
-        buildRequest.buildGroup().artifacts().stream()
-                .filter(a -> !builtArtifacts.containsKey(a))
-                .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
 
         Reproducibility foundReproducibility = null;
 
+        builtArtifacts.onItem().transformToUniAndMerge(gavtcf -> {
+            
+        });
+        for (Entry<Gavtc, Path> en : builtArtifacts.entrySet()) {
+            matchService.compare(null, Resource.of(deployDir.resolve(en.getValue())));
+        }
+        
+        buildRequest.buildGroup().artifacts().stream()
+        .filter(a -> !builtArtifacts.containsKey(a))
+        .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
         if (!builtArtifactsMap.isEmpty()) {
             foundReproducibility = Reproducibility.UNBUILDABLE;
         }
 
-        for (Entry<Gavtc, Path> en : builtArtifacts.entrySet()) {
-            matchService.compare(null, Resource.of(deployDir.resolve(en.getValue())));
-        }
-
         return new BuildReport(buildRequest, ts, foundReproducibility, builtArtifactsMap);
-    }
-
-    static Map<Gavtc, Path> collectArtifacts(Path deployDir) {
-        MavenRepository repo = MavenRepository.local(deployDir);
-        Map<Gavtc, Path> result = new TreeMap<>();
-        try (Stream<Gavtcf> gavs = repo.gavtcfStream()) {
-            gavs.forEach(a -> result.put(a.toGavtc(), a.getFile()));
-        }
-        return Collections.unmodifiableMap(result);
     }
 
     static Stream<BuildReport> listReports(Path buildDir) throws IOException {
