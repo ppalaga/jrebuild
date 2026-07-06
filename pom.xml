@@ -452,6 +452,7 @@ SPDX-License-Identifier: Apache-2.0</inlineHeader>
                                 <exclude>src/test/resources/expected/**</exclude>
                                 <exclude>src/test/resources/projects/**</exclude>
                                 <exclude>src/test/resources/ReferenceMavenRepositoryTest/**</exclude>
+                                <exclude>src/test/resources/LocalMavenRepositoryTest/**</exclude>
                             </excludes>
                         </licenseSet>
                     </licenseSets>
