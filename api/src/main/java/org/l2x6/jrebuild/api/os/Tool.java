@@ -17,13 +17,8 @@ public record Tool(
         String packagerName,
         /** Name of the installable package */
         String name,
-        String version,
-        /** Used esp. for Java; e.g. {@code temurin} or {@code corretto} */
-        String distribution) {
-
-    public String versionDistribution() {
-        return distribution == null ? version : (version + "-" + distribution);
-    }
+        /** A version string the given packager understands */
+        String version) {
 
     public static record InstalledTool(Tool tool, Collection<String> pathEnvironmentVariableEntries) {
         public void preparePathEnvironmentVariable(Consumer<String> pathEnvironmentVariable) {

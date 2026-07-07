@@ -40,7 +40,7 @@ public class ClassFileMatchServiceTest {
                 testPath(ClassPerson1.class),
                 testPath(ClassPerson2.class),
                 new ResourceMatch(
-                        ResourceMatchLevel.MISMATCH,
+                        ResourceMatchLevel.BUILDABLE,
                         "target/test-classes/org/l2x6/jrebuild/core/build/service/samples/ClassPerson2.class",
                         split("""
                                 flags: public super -> final public super

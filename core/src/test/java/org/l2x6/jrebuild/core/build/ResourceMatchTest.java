@@ -17,7 +17,7 @@ public class ResourceMatchTest {
     @Test
     void toStringMessagesNoChildren() {
         ResourceMatch match = new ResourceMatch(
-                ResourceMatchLevel.MISMATCH,
+                ResourceMatchLevel.BUILDABLE,
                 "target/b.txt",
                 List.of(
                         IndentedLine.of("--- target/a.txt"),
@@ -39,12 +39,12 @@ public class ResourceMatchTest {
     @Test
     void toStringMessagesAndTwoLevelsOfChildren() {
         ResourceMatch match = new ResourceMatch(
-                ResourceMatchLevel.MISMATCH,
+                ResourceMatchLevel.BUILDABLE,
                 "app.war",
                 List.of(IndentedLine.of("top-level note")),
                 List.of(
                         new ResourceMatch(
-                                ResourceMatchLevel.MISMATCH,
+                                ResourceMatchLevel.BUILDABLE,
                                 "WEB-INF/config.txt",
                                 List.of(
                                         IndentedLine.of("--- a/config.txt"),
@@ -54,7 +54,7 @@ public class ResourceMatchTest {
                                         IndentedLine.of("+v2")),
                                 List.of()),
                         new ResourceMatch(
-                                ResourceMatchLevel.MISMATCH,
+                                ResourceMatchLevel.BUILDABLE,
                                 "WEB-INF/lib/lib.jar",
                                 null,
                                 List.of(

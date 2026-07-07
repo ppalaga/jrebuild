@@ -5,11 +5,11 @@ package org.l2x6.jrebuild.core.build;
  * compared to a reference artifact, typically on Maven Central.
  */
 public enum Reproducibility implements Comparable<Reproducibility> {
-    /** Binary equal with reference artifacts on Maven Central */
+    /** All expected rebuilt artifacts are binary equal with reference artifacts */
     PERFECT,
     /**
      * <ul>
-     * <li>All artifacts available
+     * <li>All expected artifacts were rebuilt
      * <li>Lists of files in archives are the same
      * <li>Class file structure (fields, method signatures and constant pool match, regardless of the ordering) of all
      * classes is the same same,
@@ -44,7 +44,11 @@ public enum Reproducibility implements Comparable<Reproducibility> {
      * <li>Tag or other kind of reference is unknown or not available in any of the SCM repo URIs
      * </ul>
      */
-    SOURCE_INFO_INCOMPLETE;
+    INVALID_SOURCE_INFO,
+    /**
+     * Uncategorized failure happened during checkout, build or comparison
+     */
+    FAILED;
 
     /**
      * @param  requiredReproducibility the baseline to compare this {@link Reproducibility} against

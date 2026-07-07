@@ -1,20 +1,23 @@
 package org.l2x6.jrebuild.core.build.service;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.vertx.mutiny.core.Vertx;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -34,16 +37,20 @@ import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRepository;
+import org.l2x6.jrebuild.common.CommonUtils;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildRequest;
 import org.l2x6.jrebuild.core.build.Reproducibility;
 import org.l2x6.jrebuild.core.build.Resource;
+import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
-import org.l2x6.pom.tuner.MavenRepository;
+import org.l2x6.jrebuild.core.maven.LocalMavenRepository;
+import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
+import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
 /**
  * Layout:
@@ -61,42 +68,47 @@ import org.l2x6.pom.tuner.model.Gavtcf;
  *
  */
 public record LocalRebuildService(
+        Vertx vertx,
         Path cloneDirectory,
         Path buildServiceRootDirectory,
         CompletableFuture<BuildMetadataLayout> lazyBuildMetadataLayout,
         LocalToolService tools,
+        ReferenceMavenRepository referenceMavenRepository,
         ResourceMatchService matchService) {
 
     private static final DateTimeFormatter DIR_FORMAT = null;
 
     static LocalRebuildService of(
+            Vertx vertx,
             Path cloneDirectory,
             Path buildServiceRootDirectory,
             Executor executor,
             LocalToolService tools,
+            ReferenceMavenRepository referenceMavenRepository,
             ResourceMatchService matchService) {
         return new LocalRebuildService(
+                vertx,
                 cloneDirectory,
                 buildServiceRootDirectory,
                 CompletableFuture.supplyAsync(() -> BuildMetadataLayout.of(buildServiceRootDirectory.resolve("builds")),
                         executor),
                 tools,
+                referenceMavenRepository,
                 matchService);
     }
 
-    public BuildReport ensureBuilt(BuildRequest buildRequest) {
-        return ensureBuilt(buildRequest, Clock.systemUTC());
+    public BuildReport ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility) {
+        return ensureBuilt(buildRequest, requiredReproducibility, Clock.systemUTC());
     }
 
-    public BuildReport ensureBuilt(BuildRequest buildRequest, Clock clock) {
+    public BuildReport ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility, Clock clock) {
         /* Create or find the build directory */
         Path buildDir = getLayout().findBuildDirectory(buildRequest.buildGroup());
 
-        Reproducibility requestedRepro = buildRequest.requiredReproducibility();
         Optional<BuildReport> availableBuild;
         try (Stream<BuildReport> reports = listReports(buildDir)) {
-            availableBuild = reports.filter(report -> report.reproducibility.isBetterOrSame(requestedRepro))
-                    .sorted(BuildReport.byTimestamp().reversed())
+            availableBuild = reports.filter(report -> report.reproducibility.isBetterOrSame(requiredReproducibility))
+                    .sorted(BuildReport.byBestReproducibilityAndNewestTimestamp())
                     .findFirst();
         } catch (IOException e) {
             throw new UncheckedIOException("Could not load reports from " + buildDir, e);
@@ -106,13 +118,13 @@ public record LocalRebuildService(
             return availableBuild.get();
         }
 
-        return build(buildDir, buildRequest, tools, matchService, clock);
+        return build(vertx, buildDir, buildRequest, tools, matchService, referenceMavenRepository, clock);
 
     }
 
-    static BuildReport build(Path buildGroupDir, BuildRequest buildRequest, LocalToolService tools,
-            ResourceMatchService matchService, Clock clock) {
-        final FqScmRef scmRef = buildRequest.scmRef();
+    static BuildReport build(Vertx vertx, Path buildGroupDir, BuildRequest buildRequest, LocalToolService tools,
+            ResourceMatchService matchService, ReferenceMavenRepository referenceMavenRepository, Clock clock) {
+        final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final ScmRepository repo = scmRef.repository();
         if (!"git".equals(repo.type())) {
             throw new IllegalStateException("Cannot checkout from SCM type " + repo.type());
@@ -155,50 +167,78 @@ public record LocalRebuildService(
             final Ref ref = git.getRepository().exactRef("HEAD");
             commitId = ref.getObjectId().getName();
         } catch (IOException e) {
-            throw new UncheckedIOException("Could not fetch from " + repo.uri(), e);
+            return new BuildReport(
+                    buildRequest,
+                    ts,
+                    Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                    Reproducibility.INVALID_SOURCE_INFO,
+                    Map.of(),
+                    commitId,
+                    "Could not fetch from " + repo.uri() + "\n" + CommonUtils.stackTrace(e));
         }
 
         /* Run the script */
         List<String> cmd = buildRequest.shell().command(buildRequest.osArch(), buildRequest.buildScript());
-        CliAssured.command(cmd.get(0))
-                .args(cmd.subList(1, cmd.size()))
-                .cd(cloneDir)
-                .env("PATH", pathEnvVar)
-                .env("DEPLOYMENT_DIR", deployDir.toString())
-                .stderrToStdout()
-                .then()
-                .stdout()
-                .log()
-                .execute()
-                .assertSuccess();
+        try {
+            CliAssured.command(cmd.get(0))
+                    .args(cmd.subList(1, cmd.size()))
+                    .cd(cloneDir)
+                    .env("PATH", pathEnvVar)
+                    .env("DEPLOYMENT_DIR", deployDir.toString())
+                    .stderrToStdout()
+                    .then()
+                    .stdout()
+                    .log()
+                    .execute()
+                    .assertSuccess();
+        } catch (Throwable e) {
+            return new BuildReport(
+                    buildRequest,
+                    ts,
+                    Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                    Reproducibility.UNBUILDABLE,
+                    Map.of(),
+                    commitId,
+                    "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e));
+        }
 
         /* Check if everything was deployed, report missing artifacts if needed */
-        Map<Gavtc, Path> builtArtifacts = collectArtifacts(deployDir);
-        Map<Gavtc, ArtifactInfo> builtArtifactsMap = new LinkedHashMap<>();
+        Multi<Gavtcf> rebuiltArtifacts = new LocalMavenRepository(deployDir, vertx.fileSystem()).gavtcfStream();
+        Map<Gavtc, ArtifactInfo> builtArtifactsMap = new TreeMap<>(
+                Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
+
+        rebuiltArtifacts.onItem().transformToUniAndMerge(rebuiltGavtcf -> referenceMavenRepository
+                .resolve(rebuiltGavtcf.toGavtc())
+                .chain(refGavtcsf -> Uni.createFrom().item(() -> {
+                    ResourceMatch match = matchService.compare(Resource.of(refGavtcsf.getFile()),
+                            Resource.of(rebuiltGavtcf.getFile()));
+                    return new ArtifactInfo(rebuiltGavtcf.toGavtc(), match);
+                })
+                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())))
+                .collect().asList().await().indefinitely()
+                .forEach(ai -> builtArtifactsMap.put(ai.gavtc, ai));
+
         buildRequest.buildGroup().artifacts().stream()
-                .filter(a -> !builtArtifacts.containsKey(a))
-                .forEach(a -> builtArtifactsMap.put(a, new ArtifactInfo(ResourceMatchLevel.MISSING_IN_REBUILD)));
+                .filter(a -> !builtArtifactsMap.containsKey(a))
+                .forEach(a -> builtArtifactsMap.put(
+                        a,
+                        new ArtifactInfo(a, ResourceMatch.of(ResourceMatchLevel.MISSING_IN_REBUILD, a.getRepositoryPath()))));
 
-        Reproducibility foundReproducibility = null;
-
-        if (!builtArtifactsMap.isEmpty()) {
-            foundReproducibility = Reproducibility.UNBUILDABLE;
-        }
-
-        for (Entry<Gavtc, Path> en : builtArtifacts.entrySet()) {
-            matchService.compare(null, Resource.of(deployDir.resolve(en.getValue())));
-        }
-
-        return new BuildReport(buildRequest, ts, foundReproducibility, builtArtifactsMap);
-    }
-
-    static Map<Gavtc, Path> collectArtifacts(Path deployDir) {
-        MavenRepository repo = MavenRepository.local(deployDir);
-        Map<Gavtc, Path> result = new TreeMap<>();
-        try (Stream<Gavtcf> gavs = repo.gavtcfStream()) {
-            gavs.forEach(a -> result.put(a.toGavtc(), a.getFile()));
-        }
-        return Collections.unmodifiableMap(result);
+        Reproducibility reproducibility = builtArtifactsMap.values().stream()
+                .map(ArtifactInfo::resourceMatch)
+                .map(ResourceMatch::level)
+                .sorted(Comparator.comparing(ResourceMatchLevel::ordinal))
+                .findFirst()
+                .orElseThrow()
+                .reproducibility();
+        return new BuildReport(
+                buildRequest,
+                ts,
+                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                reproducibility,
+                builtArtifactsMap,
+                commitId,
+                null);
     }
 
     static Stream<BuildReport> listReports(Path buildDir) throws IOException {
@@ -234,23 +274,31 @@ public record LocalRebuildService(
             BuildRequest buildRequest,
             /** When the build was started */
             ZonedDateTime timeStamp,
+            /** How long the build took */
+            Duration buildDuration,
             /**
-             * Overall reproducibility aggregated over all
+             * Overall reproducibility aggregated over all artifacts
              */
             Reproducibility reproducibility,
-            Map<Gavtc, ArtifactInfo> builtArtifacts) {
+            /** Reproducibility status of individual artifacts */
+            Map<Gavtc, ArtifactInfo> builtArtifacts,
+            /** Can be {@code null} */
+            String commitId,
+            /** Can be {@code null} */
+            String errorMessage) {
 
-        private static Comparator<BuildReport> BY_TIMESTAMP_COMPARATOR = Comparator.comparing(BuildReport::timeStamp);
+        private static Comparator<BuildReport> BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR = Comparator
+                .comparing(BuildReport::reproducibility).thenComparing(BuildReport::timeStamp);
 
-        public static Comparator<? super BuildReport> byTimestamp() {
-            return BY_TIMESTAMP_COMPARATOR;
+        public static Comparator<? super BuildReport> byBestReproducibilityAndNewestTimestamp() {
+            return BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR;
         }
 
     }
 
     static record ArtifactInfo(
-            ResourceMatchLevel resourceMatchLevel) {
-
+            Gavtc gavtc,
+            ResourceMatch resourceMatch) {
     }
 
     static record BuildMetadataLayout(

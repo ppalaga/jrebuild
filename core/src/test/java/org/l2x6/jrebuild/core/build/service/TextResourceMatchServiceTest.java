@@ -29,7 +29,7 @@ public class TextResourceMatchServiceTest {
 
     static void assertCompareTexts(ResourceMatchService service) throws IOException {
         assertCompareText(service, "foo", "bar", new ResourceMatch(
-                ResourceMatchLevel.MISMATCH,
+                ResourceMatchLevel.BUILDABLE,
                 "target/b.txt",
                 split("""
                         --- target/a.txt

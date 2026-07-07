@@ -91,7 +91,7 @@ public interface ResourceMatchService {
                     return en.getValue().compare(referenceArtifact, rebuiltArtifact);
                 }
             }
-            return ResourceMatchLevel.MISMATCH.match(rebuiltArtifact.path());
+            return ResourceMatchLevel.BUILDABLE.match(rebuiltArtifact.path());
         }
 
         static class TextResourceMatchService implements ResourceMatchService {
@@ -124,7 +124,7 @@ public interface ResourceMatchService {
                     /* There are only EOL diffs */
                     return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.path(), msg, List.of());
                 }
-                return new ResourceMatch(ResourceMatchLevel.MISMATCH, rebuilt.path(), msg, List.of());
+                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.path(), msg, List.of());
             }
 
         }
@@ -162,7 +162,7 @@ public interface ResourceMatchService {
                             }
                         }
                     } else {
-                        level = ResourceMatchLevel.MISMATCH;
+                        level = ResourceMatchLevel.BUILDABLE;
                         result.add(ResourceMatchLevel.MISSING_IN_REFERENCE.match(name));
                     }
                 }
@@ -172,7 +172,7 @@ public interface ResourceMatchService {
                     String name = refEntry.getName();
                     if (!rebuiltNames.remove(name)) {
                         result.add(ResourceMatchLevel.MISSING_IN_REBUILD.match(name));
-                        level = ResourceMatchLevel.MISMATCH;
+                        level = ResourceMatchLevel.BUILDABLE;
                     }
                 }
                 return new ResourceMatch(level, rebuiltArtifact.path(), null, Collections.unmodifiableList(result));
@@ -209,7 +209,7 @@ public interface ResourceMatchService {
             private static void compareHeader(ClassModel left, ClassModel right, DiffBuilder out) {
                 if (left.majorVersion() != right.majorVersion()
                         || left.minorVersion() != right.minorVersion()) {
-                    out.add(ResourceMatchLevel.MISMATCH, "version: %d.%d -> %d.%d"
+                    out.add(ResourceMatchLevel.BUILDABLE, "version: %d.%d -> %d.%d"
                             .formatted(left.majorVersion(), left.minorVersion(),
                                     right.majorVersion(), right.minorVersion()));
                 }
@@ -217,19 +217,19 @@ public interface ResourceMatchService {
                 String leftFlags = renderFlags(left.flags());
                 String rightFlags = renderFlags(right.flags());
                 if (!leftFlags.equals(rightFlags)) {
-                    out.add(ResourceMatchLevel.MISMATCH, "flags: %s -> %s".formatted(leftFlags, rightFlags));
+                    out.add(ResourceMatchLevel.BUILDABLE, "flags: %s -> %s".formatted(leftFlags, rightFlags));
                 }
 
                 String leftThis = className(left.thisClass());
                 String rightThis = className(right.thisClass());
                 if (!leftThis.equals(rightThis)) {
-                    out.add(ResourceMatchLevel.MISMATCH, "name: %s -> %s".formatted(leftThis, rightThis));
+                    out.add(ResourceMatchLevel.BUILDABLE, "name: %s -> %s".formatted(leftThis, rightThis));
                 }
 
                 String leftSuper = left.superclass().map(ClassFileMatchService::className).orElse("<none>");
                 String rightSuper = right.superclass().map(ClassFileMatchService::className).orElse("<none>");
                 if (!leftSuper.equals(rightSuper)) {
-                    out.add(ResourceMatchLevel.MISMATCH, "superclass: %s -> %s".formatted(leftSuper, rightSuper));
+                    out.add(ResourceMatchLevel.BUILDABLE, "superclass: %s -> %s".formatted(leftSuper, rightSuper));
                 }
             }
 
@@ -241,10 +241,10 @@ public interface ResourceMatchService {
                     DiffBuilder out) {
                 left.stream()
                         .filter(i -> !right.contains(i))
-                        .forEach(i -> out.add(ResourceMatchLevel.MISMATCH, "-" + leftMapper.apply(i)));
+                        .forEach(i -> out.add(ResourceMatchLevel.BUILDABLE, "-" + leftMapper.apply(i)));
                 right.stream()
                         .filter(i -> !left.contains(i))
-                        .forEach(i -> out.add(ResourceMatchLevel.MISMATCH, "+" + rightMapper.apply(i)));
+                        .forEach(i -> out.add(ResourceMatchLevel.BUILDABLE, "+" + rightMapper.apply(i)));
             }
 
             static void compare(Collection<String> left, Collection<String> right,
@@ -283,7 +283,7 @@ public interface ResourceMatchService {
                                                     String rightFlags = renderFlags(en.right.flags());
                                                     if (!leftFlags.equals(rightFlags)) {
                                                         field.add(
-                                                                ResourceMatchLevel.MISMATCH,
+                                                                ResourceMatchLevel.BUILDABLE,
                                                                 "flags: %s -> %s".formatted(leftFlags, rightFlags));
                                                     }
 
@@ -327,7 +327,7 @@ public interface ResourceMatchService {
                                                     String leftFlags = renderFlags(en.left.flags());
                                                     String rightFlags = renderFlags(en.right.flags());
                                                     if (!leftFlags.equals(rightFlags)) {
-                                                        method.add(ResourceMatchLevel.MISMATCH,
+                                                        method.add(ResourceMatchLevel.BUILDABLE,
                                                                 "flags: %s -> %s".formatted(leftFlags, rightFlags));
                                                     }
 
@@ -340,13 +340,13 @@ public interface ResourceMatchService {
                                                         out.conditionalSection(
                                                                 "code:",
                                                                 code -> codeLines(rightCode)
-                                                                        .forEach(l -> method.add(ResourceMatchLevel.MISMATCH,
+                                                                        .forEach(l -> method.add(ResourceMatchLevel.BUILDABLE,
                                                                                 "+" + l)));
                                                     } else if (leftCode.isPresent() && rightCode.isEmpty()) {
                                                         out.conditionalSection(
                                                                 "code:",
                                                                 code -> codeLines(leftCode)
-                                                                        .forEach(l -> method.add(ResourceMatchLevel.MISMATCH,
+                                                                        .forEach(l -> method.add(ResourceMatchLevel.BUILDABLE,
                                                                                 "-" + l)));
                                                     } else if (leftCode.isPresent()) {
                                                         List<String> leftLines = codeLines(leftCode).toList();
@@ -367,7 +367,7 @@ public interface ResourceMatchService {
                                                                         3)
                                                                         .stream()
                                                                         .skip(2) // ignore the two top lines containing dummy a.class and b.class
-                                                                        .forEach(l -> method.add(ResourceMatchLevel.MISMATCH,
+                                                                        .forEach(l -> method.add(ResourceMatchLevel.BUILDABLE,
                                                                                 l)));
 
                                                     }

@@ -47,12 +47,12 @@ public class ZipResourceMatchServiceTest {
                 "target/zip-test/jar2.jar",
                 jar1, jar2,
                 new ResourceMatch(
-                        ResourceMatchLevel.MISMATCH,
+                        ResourceMatchLevel.BUILDABLE,
                         "target/zip-test/jar2.jar",
                         null,
                         List.of(
                                 new ResourceMatch(
-                                        ResourceMatchLevel.MISMATCH,
+                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/jar2.jar!greeting.txt",
                                         split("""
                                                 --- target/zip-test/jar1.jar!greeting.txt
@@ -69,12 +69,12 @@ public class ZipResourceMatchServiceTest {
                 "target/zip-test/war2.war",
                 war1, war2,
                 new ResourceMatch(
-                        ResourceMatchLevel.MISMATCH,
+                        ResourceMatchLevel.BUILDABLE,
                         "target/zip-test/war2.war",
                         null,
                         List.of(
                                 new ResourceMatch(
-                                        ResourceMatchLevel.MISMATCH,
+                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/war2.war!WEB-INF/classes/config.txt",
                                         split("""
                                                 --- target/zip-test/war1.war!WEB-INF/classes/config.txt
@@ -85,12 +85,12 @@ public class ZipResourceMatchServiceTest {
                                                 """),
                                         List.of()),
                                 new ResourceMatch(
-                                        ResourceMatchLevel.MISMATCH,
+                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/war2.war!WEB-INF/lib/lib.jar",
                                         null,
                                         List.of(
                                                 new ResourceMatch(
-                                                        ResourceMatchLevel.MISMATCH,
+                                                        ResourceMatchLevel.BUILDABLE,
                                                         "target/zip-test/war2.war!WEB-INF/lib/lib.jar!greeting.txt",
                                                         split("""
                                                                 --- target/zip-test/war1.war!WEB-INF/lib/lib.jar!greeting.txt

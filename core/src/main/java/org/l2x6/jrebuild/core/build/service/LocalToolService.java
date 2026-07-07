@@ -35,7 +35,7 @@ public class LocalToolService {
             ;
             return new PackagerEntry(p, new ConcurrentHashMap<>());
         });
-        String toolKey = tool.name() + "-" + tool.versionDistribution();
+        String toolKey = tool.name() + "-" + tool.version();
         return packagerEntry.installedTools.computeIfAbsent(toolKey, k -> packagerEntry.packager.install(tool));
     }
 
@@ -53,8 +53,7 @@ public class LocalToolService {
 
         @Override
         public InstalledTool install(Tool tool) {
-            final String versionDist = tool.version() + (tool.distribution() != null ? ("-" + tool.distribution()) : "");
-            InstalledCandidate installedTool = sdk.installCandidateIfNeeded(tool.name(), versionDist);
+            InstalledCandidate installedTool = sdk.installCandidateIfNeeded(tool.name(), tool.version());
             final Path binDir = installedTool.home().resolve("bin");
             return new InstalledTool(tool, List.of(binDir.toString()));
         }

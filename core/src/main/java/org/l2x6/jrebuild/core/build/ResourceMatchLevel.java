@@ -7,14 +7,14 @@ import java.util.List;
  */
 public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
     /** The resource is available in the rebuild but it is missing in the reference build. */
-    MISSING_IN_REFERENCE,
+    MISSING_IN_REFERENCE(Reproducibility.UNBUILDABLE),
     /** The resource is available in the reference build but is missing the rebuild. */
-    MISSING_IN_REBUILD,
+    MISSING_IN_REBUILD(Reproducibility.UNBUILDABLE),
     /**
      * Not fulfilling the criteria for {@link #PERFECT} nor {@link #SUFFICIENT}, but still available in both reference
      * and rebuild.
      */
-    MISMATCH,
+    BUILDABLE(Reproducibility.BUILDABLE),
     /**
      * <ul>
      * <li>For class files: the file structure (fields, method signatures and constant pool match) is the same, instructions
@@ -25,9 +25,15 @@ public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
      * <li>end of line characters
      * </ul>
      */
-    SUFFICIENT,
+    SUFFICIENT(Reproducibility.SUFFICIENT),
     /** Binary equal with the reference resource */
-    PERFECT;
+    PERFECT(Reproducibility.PERFECT);
+
+    private final Reproducibility reproducibility;
+
+    ResourceMatchLevel(Reproducibility reproducibility) {
+        this.reproducibility = reproducibility;
+    }
 
     /**
      * @param  other the {@link ResourceMatchLevel} to compare this {@link ResourceMatchLevel} against
@@ -53,5 +59,9 @@ public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
 
     public ResourceMatchLevel lower(ResourceMatchLevel other) {
         return this.ordinal() < other.ordinal() ? this : other;
+    }
+
+    public Reproducibility reproducibility() {
+        return reproducibility;
     }
 }
