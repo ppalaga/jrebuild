@@ -16,15 +16,15 @@ public class BuildGroupTest {
 
         FqScmRef scmRef = new FqScmRef(new ScmRef(Kind.TAG, "1.2.3", "deadbeef"),
                 new ScmRepository("?", "git", "https://github.com/org/project.git"));
-        //        {
-        //            BuildGroup g = BuildGroup.builder(scmRef)
-        //                    .artifact(Gavtc.of("foo:f1:1.2.3"))
-        //                    .artifact(Gavtc.of("foo:f2:1.2.3"))
-        //                    .artifact(Gavtc.of("bar:f1:1.2.3"))
-        //                    .artifact(Gavtc.of("bar:f2:1.2.3"))
-        //                    .build();
-        //            Assertions.assertThat(g.findMainArtifact()).isEqualTo(Gav.of("bar:f:1.2.3"));
-        //        }
+        {
+            BuildGroup g = BuildGroup.builder(scmRef)
+                    .artifact(Gavtc.of("foo:f1:1.2.3"))
+                    .artifact(Gavtc.of("foo:f2:1.2.3"))
+                    .artifact(Gavtc.of("bar:f1:1.2.3"))
+                    .artifact(Gavtc.of("bar:f2:1.2.3"))
+                    .build();
+            Assertions.assertThat(g.findMainArtifact()).isEqualTo(Gav.of("bar:f:1.2.3"));
+        }
 
         {
             BuildGroup g = BuildGroup.builder(scmRef)
