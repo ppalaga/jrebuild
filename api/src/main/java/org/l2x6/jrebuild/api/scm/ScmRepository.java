@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.Optional;
 import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
@@ -40,6 +41,19 @@ public record ScmRepository(
                 "?",
                 FAILED,
                 new Ebnfizer().add(failedRepositories.stream().map(ScmRepository::toString)).toString());
+    }
+
+    public ScmRepository(
+            String source,
+            String type,
+            String uri) {
+        this.source = Objects.requireNonNull(source, "source");
+        this.type = Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(uri, "uri");
+        if (uri.endsWith("/")) {
+            throw new IllegalArgumentException("URI must not end with /; found '" + uri + "'");
+        }
+        this.uri = uri;
     }
 
     public boolean isUnknown() {
