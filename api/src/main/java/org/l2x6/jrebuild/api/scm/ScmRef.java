@@ -17,7 +17,18 @@ public record ScmRef(
     }
 
     public static enum Kind {
-        TAG, BRANCH, COMMIT, UNKNOWN("❌"), FAILED("💣");
+        TAG() {
+            @Override
+            public String refSpec(String name) {
+                return "refs/tags/" + name;
+            }
+
+        }, BRANCH() {
+            @Override
+            public String refSpec(String name) {
+                return "refs/heads/" + name;
+            }
+        }, COMMIT, UNKNOWN("❌"), FAILED("💣");
 
         private Kind() {
             this("✅");
@@ -48,6 +59,10 @@ public record ScmRef(
         boolean isFailed() {
             return this == FAILED;
         }
+
+        public String refSpec(String name) {
+            throw new UnsupportedOperationException("Cannot create a refSpec for " + this.name());
+        }
     }
 
     public static ScmRef createUnknown(String version) {
@@ -68,6 +83,10 @@ public record ScmRef(
 
     public boolean isUnknownOrFailed() {
         return kind.isUnknownOrFailed();
+    }
+
+    public String refSpec() {
+        return kind.refSpec(name);
     }
 
     @Override

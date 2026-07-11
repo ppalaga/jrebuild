@@ -21,6 +21,10 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.FetchResult;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository;
 
 public class GitUtils {
     private static final Logger log = Logger.getLogger(GitUtils.class);
@@ -32,31 +36,41 @@ public class GitUtils {
     private static final int CREATE_RETRY_COUNT = 256;
 
     public static Git cloneOrFetchAndReset(
-            String remote,
-            String branch,
+            FqScmRef fqScmRef,
             Path directory,
             int depth) {
+        if (!fqScmRef.repository().type().equals("git")) {
+            throw new IllegalArgumentException("Can handle only git repositories; found " + fqScmRef);
+        }
         final Git git;
         if (Files.exists(directory.resolve(".git"))) {
             /* fetch and reset */
             git = openGit(directory);
-            fetchAndReset(remote, branch, git);
+            fetchAndReset(fqScmRef, git);
         } else {
             /* Shallow clone */
-            log.infof("Cloning %s to %s", remote, directory);
+            log.infof("Cloning %s to %s", fqScmRef.repository().uri(), directory);
             try {
                 git = Git.cloneRepository()
-                        .setBranch(branch)
+                        .setBranch(fqScmRef.scmRef().name())
                         .setDirectory(directory.toFile())
                         //.setCredentialsProvider(new GitCredentials())
                         .setDepth(depth)
-                        .setURI(remote)
+                        .setURI(fqScmRef.repository().uri())
                         .call();
             } catch (GitAPIException e) {
-                throw new RuntimeException("Could not clone " + remote + " to " + directory, e);
+                throw new RuntimeException("Could not clone " + fqScmRef.repository().uri() + " to " + directory, e);
             }
         }
         return git;
+    }
+    public static Git cloneOrFetchAndReset(
+            String remoteUri,
+            String branch,
+            Path directory,
+            int depth) {
+        FqScmRef fqScmRef = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new ScmRepository("?", "git", remoteUri));
+        return cloneOrFetchAndReset(fqScmRef , directory, depth);
     }
 
     static Git openGit(Path dir) {
@@ -73,7 +87,7 @@ public class GitUtils {
         }
     }
 
-    static String fetchAndReset(String useUrl, String branch, Git git) {
+    static String fetchAndReset(FqScmRef fqScmRef, Git git) {
         final Path dir = git.getRepository().getWorkTree().toPath();
         /* Forget local changes */
         try {
@@ -86,23 +100,27 @@ public class GitUtils {
             log.warnf(e, "Could not forget local changes in %s", dir);
         }
 
-        log.infof("Fetching recipe repo from %s to %s", useUrl, git.getRepository().getWorkTree());
+        String uri = fqScmRef.repository().uri();
+        log.infof("Fetching recipe repo from %s to %s", uri, git.getRepository().getWorkTree());
         final String remoteAlias = "origin";
         try {
-            ensureRemoteAvailable(useUrl, remoteAlias, git);
+            ensureRemoteAvailable(uri, remoteAlias, git);
 
-            final String remoteRef = "refs/heads/" + branch;
+            ScmRef scmRef = fqScmRef.scmRef();
+            final String remoteRef = scmRef.refSpec();
             final FetchResult fetchResult = git.fetch().setRemote(remoteAlias).setRefSpecs(remoteRef).call();
             final String remoteHead = fetchResult.getAdvertisedRef(remoteRef).getObjectId().getName();
             log.infof("Reseting the working copy to %s", remoteHead);
-            /* Reset the domino-working-branch */
-            git.branchCreate().setName(branch).setForce(true).setStartPoint(remoteHead).call();
+            String branch = scmRef.kind() == Kind.BRANCH ? scmRef.name() : scmRef.name() + "-jrebuild-branch";
+            if (git.getRepository().findRef("refs/heads/" + branch) == null) {
+                git.branchCreate().setName(branch).setForce(true).setStartPoint(remoteHead).call();
+            }
             git.checkout().setName(branch).call();
             git.reset().setMode(ResetType.HARD).setRef(remoteHead).call();
             final Ref ref = git.getRepository().exactRef("HEAD");
             return ref.getObjectId().getName();
         } catch (IOException | GitAPIException e) {
-            throw new RuntimeException("Could not fetch and reset " + dir + " from " + useUrl, e);
+            throw new RuntimeException("Could not fetch and reset " + dir + " from " + uri, e);
         }
     }
 
