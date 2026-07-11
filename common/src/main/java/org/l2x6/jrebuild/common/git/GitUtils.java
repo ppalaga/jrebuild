@@ -70,7 +70,7 @@ public class GitUtils {
             Path directory,
             int depth) {
         FqScmRef fqScmRef = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new ScmRepository("?", "git", remoteUri));
-        return cloneOrFetchAndReset(fqScmRef , directory, depth);
+        return cloneOrFetchAndReset(fqScmRef, directory, depth);
     }
 
     static Git openGit(Path dir) {
