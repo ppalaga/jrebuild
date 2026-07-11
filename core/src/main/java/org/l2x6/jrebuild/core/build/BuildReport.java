@@ -2,6 +2,7 @@ package org.l2x6.jrebuild.core.build;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Map;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -28,6 +29,10 @@ public record BuildReport(
 
     public static Comparator<? super BuildReport> byBestReproducibilityAndNewestTimestamp() {
         return BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR;
+    }
+
+    public boolean containsAll(Collection<Gavtc> expectedArtifacts) {
+        return builtArtifacts.keySet().containsAll(expectedArtifacts);
     }
 
 }

@@ -8,7 +8,6 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.core.streams.WriteStream;
@@ -22,6 +21,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
 import java.util.Locale;
+import org.l2x6.jrebuild.core.mutiny.MutinyConstants;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
 
@@ -39,9 +39,6 @@ import org.l2x6.pom.tuner.model.Gavtcf;
  * </ul>
  */
 public class ReferenceMavenRepository {
-
-    private static final OpenOptions READ_OPTIONS = new OpenOptions().setRead(true).setWrite(false).setCreate(false);
-    private static final OpenOptions WRITE_CREATE_OPTIONS = new OpenOptions();
 
     /** Base URI of the remote reference Maven repository, e.g. {@code https://repo1.maven.org/maven2} */
     private final String referenceRepositorybaseUri;
@@ -223,7 +220,7 @@ public class ReferenceMavenRepository {
     Uni<Void> download(String repoPath, Path targetPath, String expectedSha1) {
         return fileSystem
                 .mkdirs(targetPath.getParent().toString())
-                .chain(() -> fileSystem.open(targetPath.toString(), WRITE_CREATE_OPTIONS))
+                .chain(() -> fileSystem.open(targetPath.toString(), MutinyConstants.WRITE_CREATE_OPTIONS))
                 .onItem().transformToUni(asyncFile -> {
                     final String url = referenceRepositorybaseUri + "/" + repoPath;
                     final MessageDigest digest;
@@ -315,7 +312,7 @@ public class ReferenceMavenRepository {
      * @return      a {@link Uni} emitting the 40-character lowercase hex SHA1 hash
      */
     Uni<String> computeSha1(Path file) {
-        return fileSystem.open(file.toString(), READ_OPTIONS)
+        return fileSystem.open(file.toString(), MutinyConstants.READ_OPTIONS)
                 .chain(asyncFile -> {
                     try {
                         final MessageDigest digest = MessageDigest.getInstance("SHA-1");

@@ -4,22 +4,14 @@
  */
 package org.l2x6.jrebuild.core.maven;
 
-import io.vertx.core.http.HttpServer;
-import io.vertx.mutiny.core.Vertx;
-import io.vertx.mutiny.core.buffer.Buffer;
-import io.vertx.mutiny.ext.web.client.HttpResponse;
-import io.vertx.mutiny.ext.web.client.WebClient;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.core.build.service.TestEnvironment;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
 
@@ -27,51 +19,21 @@ public class ReferenceMavenRepositoryTest {
 
     @Test
     void e2e() throws Exception {
-        io.vertx.core.Vertx coreVertx = null;
-        WebClient webClient = null;
+        try (TestEnvironment testEnv = new TestEnvironment(getClass())) {
 
-        Path testRunDir = Path.of("target/ReferenceMavenRepositoryTest-" + UUID.randomUUID().toString()).toAbsolutePath()
-                .normalize();
-        Path remoteRepoDir = Path.of("target/test-classes/ReferenceMavenRepositoryTest/remote").toAbsolutePath().normalize();
-        Files.createDirectories(remoteRepoDir);
-        Gavtc gavtcTxt = Gavtc.of("org.l2x6.pom-tuner:pom-tuner:4.10.0:txt");
-        Path gavtcTxtPath = remoteRepoDir.resolve(gavtcTxt.getRepositoryPath());
-        Files.createDirectories(gavtcTxtPath.getParent());
-        Path gavtcTxtPathSha1 = createLargeFile(gavtcTxtPath, 1024 * 1024 * 20 /*20 MB */);
-
-        try {
-            coreVertx = io.vertx.core.Vertx.vertx();
-
-            HttpServer server = coreVertx.createHttpServer()
-                    .requestHandler(req -> {
-                        String path = req.path().substring(1);
-                        Path file = remoteRepoDir.resolve(path);
-                        if (Files.exists(file)) {
-                            req.response()
-                                    .putHeader("Content-Type", "application/octet-stream")
-                                    .sendFile(file.toString());
-                        } else {
-                            req.response().setStatusCode(404).end();
-                        }
-                    })
-                    .listen(0)
-                    .toCompletionStage()
-                    .toCompletableFuture()
-                    .get();
-
-            final String referenceRepoBaseUri = "http://localhost:" + server.actualPort();
-            final Vertx vertx = new Vertx(coreVertx);
-            webClient = WebClient.create(vertx);
+            Gavtc gavtcTxt = Gavtc.of("org.l2x6.pom-tuner:pom-tuner:4.10.0:txt");
+            Path gavtcTxtPathSha1 = testEnv.createLargeRemoteFile(gavtcTxt, 1024 * 1024 * 20 /* 20 MB */);
 
             Gavtc gavtcPom = Gavtc.of("org.l2x6.pom-tuner:pom-tuner:4.10.0:pom");
+            Path remoteRepoDir = testEnv.remoteRepoDirectory();
             byte[] pomContent = Files.readAllBytes(remoteRepoDir.resolve(gavtcPom.getRepositoryPath()));
             String pomSha1HexString = sha1Hex(pomContent);
 
             Assertions.assertThat(pomSha1HexString)
                     .isEqualTo(Files.readString(remoteRepoDir.resolve(gavtcPom.getRepositoryPath() + ".sha1")));
 
-            Path localMavenRepo = createDir(testRunDir, "e2e-m2");
-            Path localRefRepo = createDir(testRunDir, "e2e-ref");
+            Path localMavenRepo = testEnv.m2Directory();
+            Path localRefRepo = testEnv.localRefRepoDirectory();
 
             // Ensure both local repos are empty
             final String sha1RelPath = gavtcPom.getRepositoryPath() + ".sha1";
@@ -80,8 +42,7 @@ public class ReferenceMavenRepositoryTest {
             Assertions.assertThat(localMavenRepo.resolve(sha1RelPath)).doesNotExist();
             Assertions.assertThat(localMavenRepo.resolve(gavtcPom.getRepositoryPath())).doesNotExist();
 
-            ReferenceMavenRepository repo = new ReferenceMavenRepository(
-                    referenceRepoBaseUri, localMavenRepo, localRefRepo, webClient, vertx.fileSystem());
+            ReferenceMavenRepository repo = testEnv.getReferenceMavenRepository();
             {
                 Gavtcf result = repo.resolve(gavtcPom).await().indefinitely();
 
@@ -101,10 +62,12 @@ public class ReferenceMavenRepositoryTest {
                 assertResult(localMavenRepo, gavtcPom, pomContent, result);
             }
 
-            /* now remove the file from the remote to make sure the server is not hit when the file in local Maven repo
-             * has correct sha1 */
-            hide(remoteRepoDir, webClient, referenceRepoBaseUri, gavtcPom.getRepositoryPath());
-            hide(remoteRepoDir, webClient, referenceRepoBaseUri, gavtcPom.getRepositoryPath() + ".sha1");
+            /*
+             * now remove the file from the remote to make sure the server is not hit when the file in local Maven repo
+             * has correct sha1
+             */
+            testEnv.hideRemote(gavtcPom.getRepositoryPath());
+            testEnv.hideRemote(gavtcPom.getRepositoryPath() + ".sha1");
             /* The second attempt must pass without any of the files being available remotely */
             {
                 final Gavtcf result = repo.resolve(gavtcPom).await().indefinitely();
@@ -112,8 +75,8 @@ public class ReferenceMavenRepositoryTest {
             }
 
             /* Unhide the files in the remote repo */
-            unhide(remoteRepoDir, webClient, referenceRepoBaseUri, gavtcPom.getRepositoryPath());
-            unhide(remoteRepoDir, webClient, referenceRepoBaseUri, gavtcPom.getRepositoryPath() + ".sha1");
+            testEnv.unhideRemote(gavtcPom.getRepositoryPath());
+            testEnv.unhideRemote(gavtcPom.getRepositoryPath() + ".sha1");
 
             /* Damage the artifact in local Maven repo */
             Files.writeString(localMavenRepo.resolve(gavtcPom.getRepositoryPath()), "foo bar");
@@ -124,6 +87,7 @@ public class ReferenceMavenRepositoryTest {
                 Assertions.assertThat(localRefRepo.resolve(gavtcPom.getRepositoryPath())).hasBinaryContent(pomContent);
             }
 
+            final Path gavtcTxtPath = testEnv.remoteRepoDirectory().resolve(gavtcTxt.getRepositoryPath());
             /* Download a large file */
             {
                 final Gavtcf result = repo.resolve(gavtcTxt).await().indefinitely();
@@ -139,7 +103,7 @@ public class ReferenceMavenRepositoryTest {
                                 () -> repo.download(gavtcTxt.getRepositoryPath(), localPath, pomSha1HexString).await()
                                         .indefinitely())
                         .isInstanceOf(IllegalStateException.class)
-                        .hasMessage("SHA1 mismatch for " + referenceRepoBaseUri
+                        .hasMessage("SHA1 mismatch for " + testEnv.referenceRepoBaseUri()
                                 + "/org/l2x6/pom-tuner/pom-tuner/4.10.0/pom-tuner-4.10.0.txt: expected " + pomSha1HexString
                                 + " but got " + Files.readString(gavtcTxtPathSha1));
 
@@ -152,51 +116,12 @@ public class ReferenceMavenRepositoryTest {
                 Assertions
                         .assertThatThrownBy(() -> repo.resolve(gavtcAdoc).await().indefinitely())
                         .isInstanceOf(IllegalStateException.class)
-                        .hasMessage("SHA1 mismatch for " + referenceRepoBaseUri
+                        .hasMessage("SHA1 mismatch for " + testEnv.referenceRepoBaseUri()
                                 + "/org/l2x6/pom-tuner/pom-tuner/4.10.0/pom-tuner-4.10.0.adoc: expected " + pomSha1HexString
                                 + " but got " + Files.readString(gavtcTxtPathSha1));
             }
-
-        } finally {
-            if (webClient != null) {
-                webClient.close();
-            }
-            if (coreVertx != null) {
-                coreVertx.close().toCompletionStage().toCompletableFuture().get();
-            }
         }
 
-    }
-
-    static Path createLargeFile(Path gavtcTxtPath, int sizeBytes) throws IOException, NoSuchAlgorithmException {
-
-        MessageDigest digest = MessageDigest.getInstance("SHA-1");
-        int cnt = 0;
-        byte[] buffer = "0123456789abcdef".getBytes(StandardCharsets.ISO_8859_1);
-        try (OutputStream out = Files.newOutputStream(gavtcTxtPath)) {
-            while (cnt < sizeBytes) {
-                out.write(buffer);
-                cnt += buffer.length;
-                digest.update(buffer);
-            }
-        }
-        Path sha1Path = gavtcTxtPath.getParent().resolve("pom-tuner-4.10.0.txt.sha1");
-        Files.writeString(sha1Path,
-                HexFormat.of().formatHex(digest.digest()));
-        return sha1Path;
-    }
-
-    static void hide(Path remoteRepoDir, WebClient webClient, String referenceRepoBaseUri, String relPath) throws IOException {
-        Files.move(remoteRepoDir.resolve(relPath), remoteRepoDir.resolve(relPath + ".hidden"));
-        HttpResponse<Buffer> resp = webClient.getAbs(referenceRepoBaseUri + "/" + relPath).send().await().indefinitely();
-        Assertions.assertThat(resp.statusCode()).isEqualTo(404);
-    }
-
-    static void unhide(Path remoteRepoDir, WebClient webClient, String referenceRepoBaseUri, String relPath)
-            throws IOException {
-        Files.move(remoteRepoDir.resolve(relPath + ".hidden"), remoteRepoDir.resolve(relPath));
-        HttpResponse<Buffer> resp = webClient.getAbs(referenceRepoBaseUri + "/" + relPath).send().await().indefinitely();
-        Assertions.assertThat(resp.statusCode()).isEqualTo(200);
     }
 
     private void assertResult(Path expectedRepo, Gavtc gavtc, byte[] expectedContent, Gavtcf actual) {
@@ -205,12 +130,6 @@ public class ReferenceMavenRepositoryTest {
                 .isEqualTo(expectedRepo.resolve(gavtc.getRepositoryPath()));
         Assertions.assertThat(actual.getFile())
                 .hasBinaryContent(expectedContent);
-    }
-
-    static Path createDir(Path testRunDir, String path) throws IOException {
-        Path result = testRunDir.resolve(path);
-        Files.createDirectories(result);
-        return result;
     }
 
     static String sha1Hex(byte[] content) {

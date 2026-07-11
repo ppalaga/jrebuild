@@ -1,30 +1,39 @@
 package org.l2x6.jrebuild.core.build.service;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
-
+import java.util.function.Function;
 import org.eclipse.jgit.api.Git;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
+import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
+import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout.CloneDirectory;
 import org.l2x6.pom.tuner.ExpressionEvaluator;
 import org.l2x6.pom.tuner.MavenSourceTree;
 import org.l2x6.pom.tuner.MavenSourceTree.ActiveProfiles;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
-import io.vertx.mutiny.core.Vertx;
+public class FindReferenceArtifactsService {
+    private final CloneDirectoriesLayout cloneDirectoriesLayout;
+    private final ReferenceMavenRepository referenceMavenRepository;
 
-public record FindReferenceArtifactsService(Vertx vertx, Path gitCloneBaseDir,
-        ReferenceMavenRepository referenceMavenRepository) {
+    public FindReferenceArtifactsService(
+            CloneDirectoriesLayout cloneDirectoriesLayout,
+            ReferenceMavenRepository referenceMavenRepository) {
+        super();
+        this.cloneDirectoriesLayout = Objects.requireNonNull(cloneDirectoriesLayout, "cloneDirectoriesLayout");
+        this.referenceMavenRepository = Objects.requireNonNull(referenceMavenRepository, "referenceMavenRepository");
+    }
 
     /**
      * Checks out the given {@code fqScmRef} to {@code gitCloneBaseDir.resolve(fqScmRef.scmRef().uri())} using
@@ -39,28 +48,20 @@ public record FindReferenceArtifactsService(Vertx vertx, Path gitCloneBaseDir,
      * {@link #referenceMavenRepository}
      * and if it exists, adds it to the resulting {@link BuildGroup}.
      *
-     * @param fqScmRef the SCM tag to collect the published artifacts for
-     * @param sourceRootDirectories
-     * @return a new {@link BuildGroup} containing the artifacts published to {@link #referenceMavenRepository}
-     *         from the respository represented by {@code fqScmRef}
+     * @param  fqScmRef              the SCM tag to collect the published artifacts for
+     * @param  sourceRootDirectories
+     * @return                       a new {@link BuildGroup} containing the artifacts published to
+     *                               {@link #referenceMavenRepository}
+     *                               from the respository represented by {@code fqScmRef}
      */
-    public Uni<BuildGroup> findPublishedArtifacts(FqScmRef fqScmRef, List<Path> sourceRootDirectories) {
-        Path workingCopyDir = gitCloneBaseDir.resolve(GitUtils.uriToFileName(fqScmRef.repository().uri()));
+    public Uni<BuildGroup> findPublishedArtifacts(FqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories) {
 
-        @SuppressWarnings("unused")
-        Uni<Set<Gav>> sourceTreeGavs = vertx.fileSystem()
-                .mkdirs(workingCopyDir.toString()) // create workingCopyDir if needed
-                .chain(dirCreated -> Uni.createFrom()
-                        .item(() -> {
-                            // Clone or fetch to workingCopyDir
-                            try (@SuppressWarnings("unused")
-                            Git git = GitUtils.cloneOrFetchAndReset(fqScmRef, workingCopyDir, 1)) {
-                            }
-                            // List Maven modules present in workingCopyDir
-                            return listModules(workingCopyDir, sourceRootDirectories);
-                        })
-                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())) // the above are blocking ops
-                ;
+        Uni<Set<Gav>> sourceTreeGavs = cloneDirectoriesLayout.lockDirectory(fqScmRef.repository().uri())
+                .chain(cloneDir -> Uni.createFrom()
+                        .item(() -> cloneAndList(fqScmRef, sourceRootDirectories, cloneDir))
+                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()) // cloneAndList are blocking ops
+                        .eventually(cloneDir::close) //
+                );
 
         return sourceTreeGavs.onItem()
                 .transformToUni((Set<Gav> gavs) -> Multi.createFrom().iterable(gavs)
@@ -76,14 +77,20 @@ public record FindReferenceArtifactsService(Vertx vertx, Path gitCloneBaseDir,
 
     }
 
-    Set<Gav> listModules(Path workingCopyDir, List<Path> sourceRootDirectories) {
+    Set<Gav> cloneAndList(FqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories, CloneDirectory cloneDir) {
+        // Clone or fetch to workingCopyDir
+        try (@SuppressWarnings("unused")
+        Git git = GitUtils.cloneOrFetchAndReset(fqScmRef, cloneDir.cloneDirectory(), 1)) {
+        }
+        // List Maven modules present in workingCopyDir
+        return listModules(cloneDir.cloneDirectory(), sourceRootDirectories);
+
+    }
+
+    Set<Gav> listModules(Path workingCopyDir, Function<Path, List<Path>> sourceRootDirectories) {
         Set<Gav> result = new TreeSet<>();
-        if (sourceRootDirectories.isEmpty()) {
-            listModules(workingCopyDir.resolve("pom.xml"), result::add);
-        } else {
-            for (Path relRoot : sourceRootDirectories) {
-                listModules(workingCopyDir.resolve(relRoot).resolve("pom.xml"), result::add);
-            }
+        for (Path relRoot : sourceRootDirectories.apply(workingCopyDir)) {
+            listModules(workingCopyDir.resolve(relRoot).resolve("pom.xml"), result::add);
         }
         return result;
     }

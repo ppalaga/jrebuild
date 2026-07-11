@@ -4,6 +4,8 @@
  */
 package org.l2x6.jrebuild.common.git;
 
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryStream;
@@ -64,6 +66,15 @@ public class GitUtils {
         }
         return git;
     }
+
+    public static Uni<Git> cloneOrFetchAndResetAsync(
+            FqScmRef fqScmRef,
+            Path directory,
+            int depth) {
+        return Uni.createFrom().item(() -> cloneOrFetchAndReset(fqScmRef, directory, depth))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
     public static Git cloneOrFetchAndReset(
             String remoteUri,
             String branch,

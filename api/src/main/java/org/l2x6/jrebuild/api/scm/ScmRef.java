@@ -23,12 +23,14 @@ public record ScmRef(
                 return "refs/tags/" + name;
             }
 
-        }, BRANCH() {
+        },
+        BRANCH() {
             @Override
             public String refSpec(String name) {
                 return "refs/heads/" + name;
             }
-        }, COMMIT, UNKNOWN("❌"), FAILED("💣");
+        },
+        COMMIT, UNKNOWN("❌"), FAILED("💣");
 
         private Kind() {
             this("✅");
