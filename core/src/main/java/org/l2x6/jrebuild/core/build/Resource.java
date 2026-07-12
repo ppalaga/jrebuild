@@ -14,9 +14,13 @@ import java.util.List;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.l2x6.jrebuild.api.os.Eol;
 import org.l2x6.jrebuild.api.os.Os;
+import org.l2x6.pom.tuner.model.Gavtcf;
 
 public interface Resource {
-    String path();
+    /**
+     * @return a string describing the location of the resource, a filesystem path or a similar identifier
+     */
+    String location();
 
     boolean isMissing();
 
@@ -55,28 +59,31 @@ public interface Resource {
                 lines.add(new Line(sb.toString(), null));
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("Could not read " + path(), e);
+            throw new UncheckedIOException("Could not read " + location(), e);
         }
         return Collections.unmodifiableList(lines);
     }
 
     BufferedReader openReader() throws IOException;
 
-    public class PathResource implements Resource {
-        public PathResource(Path path) {
+    public class FileResource implements Resource {
+
+        private final Path file;
+        private final String location;
+
+        public FileResource(Path file, String location) {
             super();
-            this.path = path;
+            this.file = file;
+            if (Os.current() == Os.WINDOWS) {
+                this.location = location.replace('\\', '/');
+            } else {
+                this.location = location;
+            }
         }
 
-        private final Path path;
-
         @Override
-        public String path() {
-            if (Os.current() == Os.WINDOWS) {
-                return path.toString().replace('\\', '/');
-            }
-            return path.toString();
-
+        public String location() {
+            return location;
         }
 
         @Override
@@ -84,10 +91,10 @@ public interface Resource {
             if (cl == ZipFile.class) {
                 try {
                     return (T) ZipFile.builder()
-                            .setFile(path.toFile())
+                            .setFile(file.toFile())
                             .get();
                 } catch (IOException e) {
-                    throw new UncheckedIOException("Could not read " + path, e);
+                    throw new UncheckedIOException("Could not read " + file, e);
                 }
             }
             return null;
@@ -96,9 +103,9 @@ public interface Resource {
         @Override
         public byte[] bytes() {
             try {
-                return Files.readAllBytes(path);
+                return Files.readAllBytes(file);
             } catch (IOException e) {
-                throw new UncheckedIOException("Could not read " + path, e);
+                throw new UncheckedIOException("Could not read " + file, e);
             }
         }
 
@@ -109,11 +116,11 @@ public interface Resource {
 
         @Override
         public boolean isMissing() {
-            return !Files.exists(path);
+            return !Files.exists(file);
         }
 
         public BufferedReader openReader() throws IOException {
-            return Files.newBufferedReader(path, StandardCharsets.UTF_8);
+            return Files.newBufferedReader(file, StandardCharsets.UTF_8);
         }
 
     }
@@ -136,7 +143,7 @@ public interface Resource {
             this.bytes = bytes;
         }
 
-        public String path() {
+        public String location() {
             return path;
         }
 
@@ -181,8 +188,8 @@ public interface Resource {
         }
     }
 
-    public static Resource of(Path path) {
-        return new PathResource(path);
+    public static Resource of(Gavtcf gavtcf) {
+        return new FileResource(gavtcf.getFile(), gavtcf.toGavtc().getRepositoryPath());
     }
 
     public static Resource of(String path, byte[] byteArray) {

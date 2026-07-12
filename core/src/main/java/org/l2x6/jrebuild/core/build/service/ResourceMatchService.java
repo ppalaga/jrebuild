@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -63,39 +64,33 @@ public interface ResourceMatchService {
             super();
             final ZipResourceMatchService zipMatcher = new ZipResourceMatchService(this);
             final TextResourceMatchService textResourceMatchService = new TextResourceMatchService();
-            this.specializedServices = Map.of(
-                    ".zip", zipMatcher,
-                    ".jar", zipMatcher,
-                    ".ear", zipMatcher,
-                    ".war", zipMatcher,
-                    ".class", new ClassFileMatchService(),
-                    ".txt", textResourceMatchService,
-                    ".java", textResourceMatchService,
-                    ".md", textResourceMatchService,
-                    ".adoc", textResourceMatchService,
-                    ".mf", textResourceMatchService);
+            Map<String, ResourceMatchService> delegates = new LinkedHashMap<>();
+            Stream.of(".zip", ".jar", ".ear", ".war").forEach(k -> delegates.put(k, zipMatcher));
+            Stream.of(".adoc", ".java", ".html", ".htm", ".md", ".mf", ".txt")
+                    .forEach(k -> delegates.put(k, textResourceMatchService));
+            this.specializedServices = Collections.unmodifiableMap(delegates);
         }
 
         @Override
         public ResourceMatch compare(Resource referenceArtifact, Resource rebuiltArtifact) {
             if (rebuiltArtifact.isMissing()) {
-                return ResourceMatchLevel.MISSING_IN_REBUILD.match(referenceArtifact.path());
+                return ResourceMatchLevel.MISSING_IN_REBUILD.match(referenceArtifact.location());
             }
             if (referenceArtifact.isMissing()) {
-                return ResourceMatchLevel.MISSING_IN_REFERENCE.match(rebuiltArtifact.path());
+                return ResourceMatchLevel.MISSING_IN_REFERENCE.match(rebuiltArtifact.location());
             }
 
             if (Arrays.equals(rebuiltArtifact.bytes(), referenceArtifact.bytes())) {
-                return ResourceMatchLevel.PERFECT.match(rebuiltArtifact.path());
+                return ResourceMatchLevel.PERFECT.match(rebuiltArtifact.location());
             }
-            String path = referenceArtifact.path();
+            String path = referenceArtifact.location();
             String lowerCasePath = path.toLowerCase(Locale.ROOT);
             for (Entry<String, ResourceMatchService> en : specializedServices.entrySet()) {
                 if (lowerCasePath.endsWith(en.getKey())) {
                     return en.getValue().compare(referenceArtifact, rebuiltArtifact);
                 }
             }
-            return ResourceMatchLevel.BUILDABLE.match(rebuiltArtifact.path());
+            return ResourceMatchLevel.BUILDABLE.match(rebuiltArtifact.location());
         }
 
         static class TextResourceMatchService implements ResourceMatchService {
@@ -112,11 +107,11 @@ public interface ResourceMatchService {
                         new MappedList<Line, String>(rebuiltLines, Line::toString));
                 List<AbstractDelta<String>> eolSensitiveDeltas = diff.getDeltas();
                 if (eolSensitiveDeltas.isEmpty()) {
-                    return ResourceMatchLevel.PERFECT.match(rebuilt.path());
+                    return ResourceMatchLevel.PERFECT.match(rebuilt.location());
                 }
                 List<IndentedLine> msg = UnifiedDiffUtils.generateUnifiedDiff(
-                        reference.path(),
-                        rebuilt.path(), refEolLines, diff, 3)
+                        reference.location(),
+                        rebuilt.location(), refEolLines, diff, 3)
                         .stream()
                         .map(IndentedLine::of)
                         .toList();
@@ -126,9 +121,9 @@ public interface ResourceMatchService {
                         .diff(rebuiltLines, refLines, EOL_INSENSITIVE_EQUALS).getDeltas();
                 if (eolInsensitiveDeltas.isEmpty()) {
                     /* There are only EOL diffs */
-                    return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.path(), msg, List.of());
+                    return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.location(), msg, List.of());
                 }
-                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.path(), msg, List.of());
+                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.location(), msg, List.of());
             }
 
         }
@@ -157,8 +152,8 @@ public interface ResourceMatchService {
                     if (otherEntry != null) {
                         /* Compare class file */
                         ResourceMatch match = delegate.compare(
-                                bytes(referenceArtifact.path(), refZip, otherEntry),
-                                bytes(rebuiltArtifact.path(), rebuiltZip, entry));
+                                bytes(referenceArtifact.location(), refZip, otherEntry),
+                                bytes(rebuiltArtifact.location(), rebuiltZip, entry));
                         if (match.level() != ResourceMatchLevel.PERFECT) {
                             result.add(match);
                             if (!match.level().isHigherOrSame(level)) {
@@ -179,7 +174,7 @@ public interface ResourceMatchService {
                         level = ResourceMatchLevel.BUILDABLE;
                     }
                 }
-                return new ResourceMatch(level, rebuiltArtifact.path(), null, Collections.unmodifiableList(result));
+                return new ResourceMatch(level, rebuiltArtifact.location(), null, Collections.unmodifiableList(result));
             }
 
             static Resource bytes(String zipFilePath, ZipFile zipFile, ZipArchiveEntry entry) {
@@ -207,7 +202,7 @@ public interface ResourceMatchService {
                 compareAttributeNames(left.attributes(), right.attributes(), out);
                 compareFields(left, right, out);
                 compareMethods(left, right, out);
-                return new ResourceMatch(out.level, rebuiltResource.path(), out.messages, List.of());
+                return new ResourceMatch(out.level, rebuiltResource.location(), out.messages, List.of());
             }
 
             private static void compareHeader(ClassModel left, ClassModel right, DiffBuilder out) {
@@ -370,7 +365,8 @@ public interface ResourceMatchService {
                                                                         diff,
                                                                         3)
                                                                         .stream()
-                                                                        .skip(2) // ignore the two top lines containing dummy a.class and b.class
+                                                                        .skip(2) // ignore the two top lines containing
+                                                                        // dummy a.class and b.class
                                                                         .forEach(l -> method.add(ResourceMatchLevel.BUILDABLE,
                                                                                 l)));
 

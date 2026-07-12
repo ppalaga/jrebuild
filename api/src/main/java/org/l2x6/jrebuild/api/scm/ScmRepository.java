@@ -4,6 +4,7 @@
  */
 package org.l2x6.jrebuild.api.scm;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -13,8 +14,6 @@ import java.util.Optional;
 import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.pom.tuner.model.Gav;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public record ScmRepository(
         String source,

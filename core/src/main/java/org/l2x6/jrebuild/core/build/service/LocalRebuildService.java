@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -120,11 +121,13 @@ public record LocalRebuildService(
                             /* Install the tools and prepare the PATH env var */
                             String colon = System.getProperty("path.separator");
                             StringJoiner joiner = new StringJoiner(colon);
+                            Map<String, String> env = new LinkedHashMap<>();
                             for (Tool tool : buildRequest.tools()) {
                                 // TODO: install the tools in parallel
                                 // TODO: even in parallel with git checkout
                                 InstalledTool installed = tools.install(tool);
                                 installed.preparePathEnvironmentVariable(joiner::add);
+                                installed.prepareEnvironmentVariables(env::put);
                             }
                             joiner.add(System.getenv("PATH"));
                             final String pathEnvVar = joiner.toString();
@@ -137,6 +140,7 @@ public record LocalRebuildService(
                                         .cd(cloneDir.cloneDirectory())
                                         .env("PATH", pathEnvVar)
                                         .env("DEPLOYMENT_REPO", cloneDir.deployDirectory().toUri().toString())
+                                        .env(env)
                                         .stderrToStdout()
                                         .then()
                                         .stdout()
@@ -175,12 +179,12 @@ public record LocalRebuildService(
                             .gavtcfStream();
 
                     Uni<BuildReport> innerBuildReport = rebuiltArtifacts
-                            .onItem().transformToUniAndMerge(rebuiltGavtcf -> referenceMavenRepository
-                                    .resolve(rebuiltGavtcf.toGavtc())
+                            .onItem()
+                            .transformToUniAndMerge(rebuiltGavtcf -> referenceMavenRepository.resolve(rebuiltGavtcf.toGavtc())
                                     .chain(refGavtcsf -> Uni.createFrom()
                                             .item(() -> {
-                                                ResourceMatch match = matchService.compare(Resource.of(refGavtcsf.getFile()),
-                                                        Resource.of(rebuiltGavtcf.getFile()));
+                                                ResourceMatch match = matchService.compare(Resource.of(refGavtcsf),
+                                                        Resource.of(rebuiltGavtcf));
                                                 return new ArtifactInfo(rebuiltGavtcf.toGavtc(), match);
                                             })
                                             .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())))

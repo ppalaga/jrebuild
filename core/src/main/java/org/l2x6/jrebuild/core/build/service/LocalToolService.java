@@ -2,6 +2,7 @@ package org.l2x6.jrebuild.core.build.service;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.cliassured.sdkman.InstalledCandidate;
@@ -57,7 +58,8 @@ public class LocalToolService {
         public InstalledTool install(Tool tool) {
             InstalledCandidate installedTool = sdk.installCandidateIfNeeded(tool.name(), tool.version());
             final Path binDir = installedTool.home().resolve("bin");
-            return new InstalledTool(tool, List.of(binDir.toString()));
+            String toolHomevarName = tool.name().toUpperCase(Locale.ROOT) + "_HOME";
+            return new InstalledTool(tool, List.of(binDir.toString()), toolHomevarName, installedTool.home().toString());
         }
 
         @Override

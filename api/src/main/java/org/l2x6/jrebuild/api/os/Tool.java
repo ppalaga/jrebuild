@@ -5,6 +5,7 @@
 package org.l2x6.jrebuild.api.os;
 
 import java.util.Collection;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -20,9 +21,15 @@ public record Tool(
         /** A version string the given packager understands */
         String version) {
 
-    public static record InstalledTool(Tool tool, Collection<String> pathEnvironmentVariableEntries) {
+    public static record InstalledTool(Tool tool, Collection<String> pathEnvironmentVariableEntries, String... env) {
         public void preparePathEnvironmentVariable(Consumer<String> pathEnvironmentVariable) {
             pathEnvironmentVariableEntries.forEach(pathEnvironmentVariable::accept);
+        }
+
+        public void prepareEnvironmentVariables(BiConsumer<String, String> environmentVariables) {
+            for (int i = 0; i < env.length;) {
+                environmentVariables.accept(env[i++], env[i++]);
+            }
         }
     }
 }

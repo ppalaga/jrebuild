@@ -9,6 +9,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.build.Resource;
+import org.l2x6.jrebuild.core.build.Resource.FileResource;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
@@ -89,8 +90,8 @@ public class TextResourceMatchServiceTest {
             Files.write(ap, a.getBytes(StandardCharsets.UTF_8));
             Files.write(bp, b.getBytes(StandardCharsets.UTF_8));
 
-            Resource ar = Resource.of(ap);
-            Resource br = Resource.of(bp);
+            Resource ar = new FileResource(ap, ap.getFileName().toString());
+            Resource br = new FileResource(bp, bp.getFileName().toString());
             ResourceMatch actual = service.compare(ar, br);
             Assertions.assertThat(actual).isEqualTo(expected);
         }

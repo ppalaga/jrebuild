@@ -22,6 +22,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildReport;
@@ -76,7 +77,9 @@ public interface BuildReportStorage {
 
         @SuppressWarnings("unused")
         Uni<Path> getOrCreateReportsDirectory(BuildGroup buildGroup) {
-            Path result = reportsDirectory.resolve(GitUtils.uriToFileName(buildGroup.scmRef().repository().uri()));
+            FqScmRef scmRef = buildGroup.scmRef();
+            Path result = reportsDirectory.resolve(GitUtils.uriToFileName(scmRef.repository().uri()))
+                    .resolve(scmRef.scmRef().name());
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
         }
 
