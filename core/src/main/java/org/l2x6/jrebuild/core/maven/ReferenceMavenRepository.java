@@ -8,9 +8,12 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
+import io.vertx.mutiny.core.file.AsyncFile;
 import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.core.streams.WriteStream;
+import io.vertx.mutiny.ext.auth.prng.VertxContextPRNG;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import io.vertx.mutiny.ext.web.codec.BodyCodec;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +31,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.core.mutiny.MutinyConstants;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -69,22 +73,23 @@ public class ReferenceMavenRepository {
 
     /** Vert.x Mutiny {@link FileSystem} used for all non-blocking file I/O operations */
     private final FileSystem fileSystem;
+    private final VertxContextPRNG prng;
 
     /**
      * @param referenceRepositorybaseUri    base URI of the remote reference Maven repository
      * @param localMavenRepository          root of the user's local Maven repository
      * @param localReferenceMavenRepository root of the JRebuild-private local reference repository
-     * @param webClient                     Vert.x Mutiny {@link WebClient} for HTTP operations
-     * @param fileSystem                    Vert.x Mutiny {@link FileSystem} for non-blocking file I/O
+     * @param vertx                         Vert.x Mutiny
      */
     public ReferenceMavenRepository(String referenceRepositorybaseUri, Path localMavenRepository,
-            Path localReferenceMavenRepository, WebClient webClient, FileSystem fileSystem) {
+            Path localReferenceMavenRepository, Vertx vertx) {
         super();
         this.referenceRepositorybaseUri = referenceRepositorybaseUri;
         this.localMavenRepository = localMavenRepository;
         this.localReferenceMavenRepository = localReferenceMavenRepository;
-        this.webClient = webClient;
-        this.fileSystem = fileSystem;
+        this.webClient = WebClient.create(vertx);
+        this.fileSystem = vertx.fileSystem();
+        this.prng = VertxContextPRNG.current(vertx);
     }
 
     /**
@@ -254,7 +259,7 @@ public class ReferenceMavenRepository {
         return fileSystem.exists(sha1Path.toString())
                 .chain(exists -> {
                     if (exists) {
-                        return readString(sha1Path).map(ReferenceMavenRepository::parseSha1);
+                        return readString(sha1Path).map(String::trim);
                     }
 
                     /* Download the SHA1 file from the remote reference repository and cache it locally */
@@ -262,11 +267,11 @@ public class ReferenceMavenRepository {
                     return webClient.getAbs(sha1Url).send()
                             .chain(resp -> {
                                 if (resp.statusCode() != 200) {
-                                    Uni.createFrom().failure(new RuntimeException(
+                                    return Uni.createFrom().failure(new StackTraceLessException(
                                             "Failed to download " + sha1Url + ": HTTP " + resp.statusCode()));
                                 }
                                 final Buffer body = resp.body();
-                                final String sha1 = parseSha1(body.toString());
+                                final String sha1 = body.toString().trim();
                                 return fileSystem
                                         .mkdirs(sha1Path.getParent().toString())
                                         .chain(() -> fileSystem.writeFile(
@@ -285,16 +290,18 @@ public class ReferenceMavenRepository {
      * @return            a {@link Uni} that completes when the download and write are finished
      */
     Uni<Void> download(String repoPath, Path targetPath, String expectedSha1) {
+        Path tempTarget = targetPath
+                .resolveSibling("_tmp." + Math.abs(prng.nextInt(10000)) + targetPath.getFileName().toString());
         return fileSystem
                 .mkdirs(targetPath.getParent().toString())
-                .chain(() -> fileSystem.open(targetPath.toString(), MutinyConstants.WRITE_CREATE_OPTIONS))
+                .chain(() -> fileSystem.open(tempTarget.toString(), MutinyConstants.WRITE_CREATE_OPTIONS))
                 .onItem().transformToUni(asyncFile -> {
                     final String url = referenceRepositorybaseUri + "/" + repoPath;
                     final MessageDigest digest;
                     try {
                         digest = MessageDigest.getInstance("SHA-1");
                     } catch (NoSuchAlgorithmException e) {
-                        return asyncFile.close().replaceWith(Uni.createFrom().<Void> failure(e));
+                        return closeDeleteAndReturnFailure(tempTarget, asyncFile, e.getMessage());
                     }
                     WriteStream<Buffer> sha1Stream = WriteStream
                             .newInstance(new DigestWriteStream(asyncFile.getDelegate(), digest));
@@ -302,18 +309,25 @@ public class ReferenceMavenRepository {
                             .as(BodyCodec.pipe(sha1Stream))
                             .send().chain(resp -> {
                                 if (resp.statusCode() != 200) {
-                                    return Uni.createFrom().failure(new RuntimeException(
-                                            "Failed to download " + url + ": HTTP " + resp.statusCode()));
+                                    return closeDeleteAndReturnFailure(tempTarget, asyncFile,
+                                            "Failed to download " + url + ": HTTP " + resp.statusCode());
                                 }
                                 final String actualSha1 = HexFormat.of().formatHex(digest.digest());
                                 if (!actualSha1.equals(expectedSha1)) {
-                                    return Uni.createFrom().failure(new IllegalStateException(
+                                    return closeDeleteAndReturnFailure(tempTarget, asyncFile,
                                             "SHA1 mismatch for " + url + ": expected " + expectedSha1
-                                                    + " but got " + actualSha1));
+                                                    + " but got " + actualSha1);
                                 }
-                                return Uni.createFrom().voidItem();
+                                return fileSystem.move(tempTarget.toString(), targetPath.toString(),
+                                        MutinyConstants.COPY_ATTRIBUTES_REPLACE_ATOMIC_NOFOLLOW);
                             });
                 });
+    }
+
+    Uni<Void> closeDeleteAndReturnFailure(Path file, AsyncFile asyncFile, String message) {
+        return asyncFile.close().chain(() -> fileSystem
+                .delete(file.toString())
+                .chain(() -> Uni.createFrom().failure(new StackTraceLessException(message))));
     }
 
     /**
@@ -392,16 +406,6 @@ public class ReferenceMavenRepository {
                         return asyncFile.close().replaceWith(Uni.createFrom().<String> failure(e));
                     }
                 });
-    }
-
-    /**
-     * Extracts the 40-character hex SHA1 hash from a raw SHA1 file content string.
-     *
-     * @param  raw the raw content of a {@code .sha1} file
-     * @return     the trimmed SHA1 hash
-     */
-    static String parseSha1(String raw) {
-        return raw.trim();
     }
 
     /**

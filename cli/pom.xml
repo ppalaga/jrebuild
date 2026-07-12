@@ -16,8 +16,6 @@
     <artifactId>jrebuild-cli</artifactId>
     <packaging>jar</packaging>
 
-    <name>jrebuild CLI</name>
-
     <properties>
     </properties>
 

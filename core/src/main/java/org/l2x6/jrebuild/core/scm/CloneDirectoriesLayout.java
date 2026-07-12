@@ -16,9 +16,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.common.git.GitUtils;
 
 public class CloneDirectoriesLayout {
+    private static final Logger log = Logger.getLogger(CloneDirectoriesLayout.class);
     private final Path clonesRootDirectory;
     private final Set<Path> localLocks;
 
@@ -30,9 +32,10 @@ public class CloneDirectoriesLayout {
 
     public Uni<CloneDirectory> lockDirectory(String scmUri) {
         final Path repoDir = clonesRootDirectory.resolve(GitUtils.uriToFileName(scmUri)).toAbsolutePath().normalize();
-        return Uni.createFrom().item(() -> {
-            return lock(repoDir);
-        })
+        return Uni.createFrom()
+                .item(() -> {
+                    return lock(repoDir);
+                })
                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
@@ -57,6 +60,8 @@ public class CloneDirectoriesLayout {
                             throw new UncheckedIOException("Could not create " + lockedDir, e);
                         }
                         return new CloneDirectory(lockedDir, lockFile);
+                    } else {
+                        fileLock.release();
                     }
                 }
             }
@@ -96,7 +101,7 @@ public class CloneDirectoriesLayout {
             try {
                 lockFile.close();
             } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                log.warnf(e, "Could not close %s/clones.lock", lockedDirectory);
             }
         }
 

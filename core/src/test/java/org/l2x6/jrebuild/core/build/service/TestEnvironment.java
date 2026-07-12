@@ -190,7 +190,10 @@ public class TestEnvironment implements AutoCloseable {
     public ReferenceMavenRepository getReferenceMavenRepository() {
         if (referenceMavenRepository == null) {
             referenceMavenRepository = new ReferenceMavenRepository(
-                    referenceRepoBaseUri, localMavenRepo, localRefRepo, webClient, vertx.fileSystem());
+                    referenceRepoBaseUri,
+                    localMavenRepo,
+                    localRefRepo,
+                    vertx);
         }
         return referenceMavenRepository;
     }

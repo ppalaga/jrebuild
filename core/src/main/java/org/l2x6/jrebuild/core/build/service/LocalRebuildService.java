@@ -4,7 +4,6 @@ import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.mutiny.core.Vertx;
-import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.TreeMap;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.cliassured.CliAssured;
 import org.eclipse.jgit.api.Git;
@@ -25,6 +23,7 @@ import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.CommonUtils;
+import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildReport;
 import org.l2x6.jrebuild.core.build.BuildRequest;
@@ -51,7 +50,6 @@ public record LocalRebuildService(
     static LocalRebuildService of(
             Vertx vertx,
             CloneDirectoriesLayout cloneDirectoriesLayout,
-            Executor executor,
             LocalToolService tools,
             ReferenceMavenRepository referenceMavenRepository,
             ResourceMatchService matchService,
@@ -101,18 +99,18 @@ public record LocalRebuildService(
 
     static Uni<BuildReport> build(Vertx vertx, CloneDirectory cloneDir, BuildRequest buildRequest, LocalToolService tools,
             ResourceMatchService matchService, ReferenceMavenRepository referenceMavenRepository, Clock clock) {
+        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")));
         final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final ScmRepository repo = scmRef.repository();
         if (!"git".equals(repo.type())) {
-            throw new IllegalStateException("Cannot checkout from SCM type " + repo.type());
+            return Uni.createFrom()
+                    .item(buildReportFaulure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
         }
         OsArch currentOsArch = OsArch.current();
         if (!currentOsArch.equals(buildRequest.osArch())) {
-            throw new IllegalStateException(
-                    "The current OS " + currentOsArch + " does not match the requested OS " + buildRequest.osArch());
+            return Uni.createFrom().item(buildReportFaulure(buildRequest, clock, ts, repo,
+                    "The current OS " + currentOsArch + " does not match the requested OS " + buildRequest.osArch()));
         }
-
-        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")));
 
         @SuppressWarnings("unused")
         Uni<String> commitIdUni = vertx.fileSystem().mkdirs(cloneDir.deployDirectory().toString())
@@ -126,7 +124,7 @@ public record LocalRebuildService(
                                     1)) {
                                 final Ref ref = git.getRepository().exactRef("HEAD");
                                 commitId = ref.getObjectId().getName();
-                            } catch (IOException e) {
+                            } catch (Exception e) {
                                 throw new BuildReportFailure(new BuildReport(
                                         buildRequest,
                                         ts,
@@ -141,6 +139,8 @@ public record LocalRebuildService(
                             String colon = System.getProperty("path.separator");
                             StringJoiner joiner = new StringJoiner(colon);
                             for (Tool tool : buildRequest.tools()) {
+                                // TODO: install the tools in parallel
+                                // TODO: even in parallel with git checkout
                                 InstalledTool installed = tools.install(tool);
                                 installed.preparePathEnvironmentVariable(joiner::add);
                             }
@@ -232,17 +232,23 @@ public record LocalRebuildService(
             if (e instanceof BuildReportFailure) {
                 return ((BuildReportFailure) e).buildReport;
             } else {
-                return new BuildReport(
-                        buildRequest,
-                        ts,
-                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                        Reproducibility.FAILED,
-                        Map.of(),
-                        null,
+                return buildReportFaulure(buildRequest, clock, ts, repo,
                         "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e));
             }
         });
 
+    }
+
+    static BuildReport buildReportFaulure(BuildRequest buildRequest, Clock clock, ZonedDateTime ts,
+            final ScmRepository repo, String message) {
+        return new BuildReport(
+                buildRequest,
+                ts,
+                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                Reproducibility.FAILED,
+                Map.of(),
+                null,
+                message);
     }
 
     public static record ArtifactInfo(
@@ -250,18 +256,13 @@ public record LocalRebuildService(
             ResourceMatch resourceMatch) {
     }
 
-    static class BuildReportFailure extends RuntimeException {
+    static class BuildReportFailure extends StackTraceLessException {
         private static final long serialVersionUID = 1L;
         private final BuildReport buildReport;
 
         public BuildReportFailure(BuildReport buildReport) {
-            super();
+            super(null);
             this.buildReport = buildReport;
-        }
-
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            return this;
         }
 
     }
