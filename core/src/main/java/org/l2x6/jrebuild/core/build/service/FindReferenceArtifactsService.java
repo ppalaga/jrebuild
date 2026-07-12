@@ -14,6 +14,7 @@ import org.eclipse.jgit.api.Git;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
+import org.l2x6.jrebuild.core.build.BuildGroup.Builder;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout.CloneDirectory;
@@ -66,14 +67,15 @@ public class FindReferenceArtifactsService {
         return sourceTreeGavs.onItem()
                 .transformToUni((Set<Gav> gavs) -> Multi.createFrom().iterable(gavs)
                         .onItem()
-                        .transformToUniAndMerge(sourceTreeGav ->
-                        // for each sourceTreeGavs check in parallel whether it was published to the reference repo
-                        referenceMavenRepository.resolve(sourceTreeGav.toGavtc(Gavtc.Type.pom(), null))
-                                .map(gavtcf -> gavtcf.toGavtc())
+                        .transformToUniAndMerge(sourceTreeGav -> referenceMavenRepository.list(sourceTreeGav)
                                 .onFailure().recoverWithNull()) // missing items would throw a failure
                         .filter(Objects::nonNull) // remove the missing ones
                         .collect().asList()
-                        .map(publishedGavtcs -> BuildGroup.builder(fqScmRef).artifacts(publishedGavtcs).build()));
+                        .map(publishedGavtcs -> { // publishedGavtcs is List<List<Gavtc>>
+                            Builder result = BuildGroup.builder(fqScmRef);
+                            publishedGavtcs.forEach(result::artifacts);
+                            return result.build();
+                        }));
 
     }
 

@@ -26,6 +26,12 @@ import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.pom.tuner.model.Gavtc;
 
 public class TestEnvironment implements AutoCloseable {
+
+    public static enum RemoteRepository {
+        LOCAL,
+        CENTRAL
+    }
+
     private final io.vertx.core.Vertx coreVertx;
     private final WebClient webClient;
 
@@ -39,8 +45,10 @@ public class TestEnvironment implements AutoCloseable {
     private FindReferenceArtifactsService findReferenceArtifactsService;
     private final Path clonesDir;
     private CloneDirectoriesLayout cloneDirectoriesLayout;
+    private final RemoteRepository remoteRepository;
 
-    public TestEnvironment(Class<?> testClass) {
+    public TestEnvironment(Class<?> testClass, RemoteRepository remoteRepository) {
+        this.remoteRepository = remoteRepository;
         String testName = testClass.getSimpleName();
         testRunDir = Path.of("target/" + testName + "-" + UUID.randomUUID().toString()).toAbsolutePath()
                 .normalize();
@@ -73,24 +81,48 @@ public class TestEnvironment implements AutoCloseable {
         coreVertx = io.vertx.core.Vertx.vertx();
 
         try {
-            HttpServer server = coreVertx.createHttpServer()
-                    .requestHandler(req -> {
-                        String path = req.path().substring(1);
-                        Path file = remoteRepoDir.resolve(path);
-                        if (Files.exists(file)) {
-                            req.response()
-                                    .putHeader("Content-Type", "application/octet-stream")
-                                    .sendFile(file.toString());
-                        } else {
-                            req.response().setStatusCode(404).end();
-                        }
-                    })
-                    .listen(0)
-                    .toCompletionStage()
-                    .toCompletableFuture()
-                    .get();
+            switch (remoteRepository) {
+            case CENTRAL -> {
+                referenceRepoBaseUri = "https://repo1.maven.org/maven2";
+            }
+            case LOCAL -> {
+                HttpServer server = coreVertx.createHttpServer()
+                        .requestHandler(req -> {
+                            String path = req.path().substring(1);
+                            Path file = remoteRepoDir.resolve(path);
+                            if (Files.isRegularFile(file)) {
+                                req.response()
+                                        .putHeader("Content-Type", "application/octet-stream")
+                                        .sendFile(file.toString());
+                            } else if (Files.isDirectory(file)) {
+                                StringBuilder html = new StringBuilder("<html><body>\n");
+                                try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(file)) {
+                                    for (Path entry : stream) {
+                                        String name = entry.getFileName().toString();
+                                        html.append("<a href=\"").append(name).append("\">")
+                                                .append(name).append("</a>\n");
+                                    }
+                                } catch (IOException e) {
+                                    req.response().setStatusCode(500).end(e.getMessage());
+                                    return;
+                                }
+                                html.append("</body></html>");
+                                req.response()
+                                        .putHeader("Content-Type", "text/html")
+                                        .end(html.toString());
+                            } else {
+                                req.response().setStatusCode(404).end();
+                            }
+                        })
+                        .listen(0)
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .get();
 
-            referenceRepoBaseUri = "http://localhost:" + server.actualPort();
+                referenceRepoBaseUri = "http://localhost:" + server.actualPort();
+            }
+            default -> throw new IllegalArgumentException("Unexpected value: " + remoteRepository);
+            }
             vertx = new Vertx(coreVertx);
             webClient = WebClient.create(vertx);
         } catch (InterruptedException e) {

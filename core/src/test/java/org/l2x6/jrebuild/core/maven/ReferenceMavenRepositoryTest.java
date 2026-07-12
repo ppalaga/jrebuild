@@ -12,6 +12,7 @@ import java.util.HexFormat;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.core.build.service.TestEnvironment;
+import org.l2x6.jrebuild.core.build.service.TestEnvironment.RemoteRepository;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
 
@@ -19,7 +20,7 @@ public class ReferenceMavenRepositoryTest {
 
     @Test
     void e2e() throws Exception {
-        try (TestEnvironment testEnv = new TestEnvironment(getClass())) {
+        try (TestEnvironment testEnv = new TestEnvironment(getClass(), RemoteRepository.LOCAL)) {
 
             Gavtc gavtcTxt = Gavtc.of("org.l2x6.pom-tuner:pom-tuner:4.10.0:txt");
             Path gavtcTxtPathSha1 = testEnv.createLargeRemoteFile(gavtcTxt, 1024 * 1024 * 20 /* 20 MB */);

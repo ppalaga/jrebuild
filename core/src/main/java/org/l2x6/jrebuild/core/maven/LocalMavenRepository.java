@@ -34,6 +34,14 @@ public record LocalMavenRepository(Path rootDirectory, FileSystem fileSystem) {
                         }));
     }
 
+    public static boolean isChecksumOrSignature(String fileName) {
+        return fileName.endsWith(".asc")
+                || fileName.endsWith(".md5")
+                || fileName.endsWith(".sha1")
+                || fileName.endsWith(".sha256")
+                || fileName.endsWith(".sha512");
+    }
+
     static class VersionDirectory {
 
         static Multi<VersionDirectory> of(Path rootDirectory, Path versionDirectory, FileSystem fileSystem) {
@@ -85,11 +93,7 @@ public record LocalMavenRepository(Path rootDirectory, FileSystem fileSystem) {
                     .select().where(file -> {
                         String fileName = file.getFileName().toString();
                         return fileName.startsWith(prefix)
-                                && !fileName.endsWith(".asc")
-                                && !fileName.endsWith(".md5")
-                                && !fileName.endsWith(".sha1")
-                                && !fileName.endsWith(".sha256")
-                                && !fileName.endsWith(".sha512");
+                                && !isChecksumOrSignature(fileName);
                     })
                     .onItem().transform(file -> {
                         String fileName = file.getFileName().toString();

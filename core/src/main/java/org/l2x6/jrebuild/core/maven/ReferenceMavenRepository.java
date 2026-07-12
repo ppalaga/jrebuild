@@ -19,9 +19,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
+import java.util.StringJoiner;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.l2x6.jrebuild.core.mutiny.MutinyConstants;
+import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.Gavtcf;
 
@@ -39,6 +47,8 @@ import org.l2x6.pom.tuner.model.Gavtcf;
  * </ul>
  */
 public class ReferenceMavenRepository {
+
+    private static final Pattern HREF_PATTERN = Pattern.compile("\\s+href=\"([^\"]+)\"");
 
     /** Base URI of the remote reference Maven repository, e.g. {@code https://repo1.maven.org/maven2} */
     private final String referenceRepositorybaseUri;
@@ -75,6 +85,48 @@ public class ReferenceMavenRepository {
         this.localReferenceMavenRepository = localReferenceMavenRepository;
         this.webClient = webClient;
         this.fileSystem = fileSystem;
+    }
+
+    /**
+     * Attempts to GET the version URL of {@code gav} obtained through
+     * {@code referenceRepositorybaseUri + "/"+ gav.getRepositoryPath())},
+     * parses the returned HTML, extracts links pointing at the individual artifacts and tries to parse those to
+     * {@link Gavtc}.
+     *
+     * @param  gav
+     * @return
+     */
+    public Uni<List<Gavtc>> list(final Gav gav) {
+        Path remoteArtifactsFile = localReferenceMavenRepository.resolve(gav.getRepositoryPath())
+                .resolve("remote-artifacts.txt");
+        return fileSystem.exists(remoteArtifactsFile.toString())
+                .chain(exists -> {
+                    if (exists) {
+                        return fileSystem.readFile(remoteArtifactsFile.toString())
+                                .map(buffer -> Stream.of(buffer.toString(StandardCharsets.UTF_8).split("\n"))
+                                        .filter(line -> !line.isBlank()).map(Gavtc::of).toList());
+                    } else {
+                        String url = referenceRepositorybaseUri + "/" + gav.getRepositoryPath() + "/";
+                        return webClient.getAbs(url)
+                                .send().chain(resp -> {
+                                    if (resp.statusCode() != 200) {
+                                        return Uni.createFrom().failure(new RuntimeException(
+                                                "Failed to download " + url + ": HTTP " + resp.statusCode()));
+                                    }
+                                    final List<Gavtc> result = new ArrayList<>();
+                                    final StringJoiner joiner = new StringJoiner("\n");
+                                    parseBody(gav, resp.bodyAsString(), gavtc -> {
+                                        joiner.add(gavtc.toString());
+                                        result.add(gavtc);
+                                    });
+                                    return fileSystem
+                                            .mkdirs(remoteArtifactsFile.getParent().toString())
+                                            .chain(v -> fileSystem
+                                                    .writeFile(remoteArtifactsFile.toString(), Buffer.buffer(joiner.toString()))
+                                                    .map(v2 -> result));
+                                });
+                    }
+                });
     }
 
     /**
@@ -160,6 +212,21 @@ public class ReferenceMavenRepository {
                         }));
     }
 
+    static void parseBody(Gav gav, String body, Consumer<Gavtc> consumer) {
+        Matcher m = HREF_PATTERN.matcher(body);
+        final String prefix = gav.getArtifactId() + "-" + gav.getVersion();
+        final Path pathBase = Path.of(gav.getRepositoryPath());
+        while (m.find()) {
+            String file = m.group(1);
+            if (file.startsWith(prefix)
+                    && !LocalMavenRepository.isChecksumOrSignature(file)) {
+                Gavtc gavtc = Gavtc.of(pathBase.resolve(file));
+                consumer.accept(gavtc);
+            }
+        }
+
+    }
+
     /**
      * Checks whether the given file exists and its SHA1 hash matches the expected value.
      *
@@ -167,7 +234,7 @@ public class ReferenceMavenRepository {
      * @param  expectedSha1 the expected 40-character hex SHA1 hash
      * @return              a {@link Uni} emitting {@code true} if the file exists and its SHA1 matches
      */
-    private Uni<ExistsAndChecksumMatches> existsAndSha1Matches(Path path, String expectedSha1) {
+    Uni<ExistsAndChecksumMatches> existsAndSha1Matches(Path path, String expectedSha1) {
         return fileSystem.exists(path.toString())
                 .chain(exists -> exists
                         ? sha1Matches(path, expectedSha1).chain(sha1Matches -> ExistsAndChecksumMatches.of(exists, sha1Matches))
