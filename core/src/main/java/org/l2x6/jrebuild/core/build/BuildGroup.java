@@ -4,6 +4,8 @@
  */
 package org.l2x6.jrebuild.core.build;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,30 +21,30 @@ import java.util.TreeSet;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
+import org.l2x6.jrebuild.core.jackson.Serializers;
 import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
-public class BuildGroup {
+public record BuildGroup(
+        FqScmRef scmRef,
+        @JsonSerialize(contentUsing = Serializers.GavtcSerializer.class) @JsonDeserialize(
+                contentUsing = Serializers.GavtcDeserializer.class) Set<Gavtc> artifacts,
+        int hashCode_) {
 
-    private final FqScmRef scmRef;
-    private final Set<Gavtc> artifacts;
-    private final int hashCode;
-
-    private BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
-        super();
+    public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts, int hashCode_) {
         this.scmRef = Objects.requireNonNull(scmRef);
         this.artifacts = JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts));
-        this.hashCode = 31 * scmRef.hashCode() + artifacts.hashCode();
+        if (hashCode_ == 0) {
+            throw new IllegalArgumentException("hashCode_ cannot be 0");
+        }
+        this.hashCode_ = hashCode_;
     }
 
-    public FqScmRef scmRef() {
-        return scmRef;
-    }
-
-    public Set<Gavtc> artifacts() {
-        return artifacts;
+    public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
+        this(Objects.requireNonNull(scmRef), JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts)),
+                31 * scmRef.hashCode() + artifacts.hashCode());
     }
 
     public static Builder builder(FqScmRef scmRef) {
@@ -55,7 +57,7 @@ public class BuildGroup {
 
     @Override
     public int hashCode() {
-        return hashCode;
+        return hashCode_;
     }
 
     @Override

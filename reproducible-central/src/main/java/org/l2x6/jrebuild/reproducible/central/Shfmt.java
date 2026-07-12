@@ -4,6 +4,8 @@
  */
 package org.l2x6.jrebuild.reproducible.central;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,8 +32,6 @@ import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.OsArch;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 public class Shfmt {
     private static final Logger log = Logger.getLogger(Shfmt.class);
@@ -121,11 +121,11 @@ public class Shfmt {
             }
             List<String> names = new ArrayList<>();
             for (JsonNode asset : assets) {
-                String name = asset.get("name").asString();
+                String name = asset.get("name").asText();
                 OsArch osArch = detector.detect(name);
                 if (currentOsArch.equals(osArch)) {
-                    String downloadUrl = asset.get("browser_download_url").asString();
-                    String digest = asset.get("digest").asString();
+                    String downloadUrl = asset.get("browser_download_url").asText();
+                    String digest = asset.get("digest").asText();
                     Builder requestBuilder = HttpRequest.newBuilder()
                             .uri(URI.create(downloadUrl))
                             .GET();

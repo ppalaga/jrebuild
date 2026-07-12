@@ -71,7 +71,7 @@ public class TextResourceMatchServiceTest {
 
     static List<IndentedLine> split(String string) {
         return JrebuildUtils.lines(string)
-                .map(l -> IndentedLine.parse(l, 4))
+                .map(l -> IndentedLine.parse(l))
                 .toList();
     }
 

@@ -15,8 +15,8 @@ public class FindReferenceArtifactsServiceTest {
 
     @Test
     void local() throws Exception {
-        try (TestEnvironment testEnvironment = new TestEnvironment(getClass(), RemoteRepository.LOCAL)) {
-            FindReferenceArtifactsService findService = testEnvironment.getFindReferenceArtifactsService();
+        try (TestEnvironment testEnv = new TestEnvironment(getClass(), RemoteRepository.LOCAL)) {
+            FindReferenceArtifactsService findService = testEnv.getFindReferenceArtifactsService();
             BuildGroup bg = findService.findPublishedArtifacts(
                     new FqScmRef(
                             new ScmRef(Kind.TAG, "4.10.0", null),

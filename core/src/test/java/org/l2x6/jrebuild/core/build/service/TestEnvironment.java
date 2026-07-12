@@ -18,7 +18,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
@@ -37,6 +36,7 @@ public class TestEnvironment implements AutoCloseable {
 
     private final Path testRunDir;
     private final Path remoteRepoDir;
+    private final Path toolsDir;
     private final String referenceRepoBaseUri;
     private final Path localMavenRepo;
     private final Path localRefRepo;
@@ -45,18 +45,24 @@ public class TestEnvironment implements AutoCloseable {
     private FindReferenceArtifactsService findReferenceArtifactsService;
     private final Path clonesDir;
     private CloneDirectoriesLayout cloneDirectoriesLayout;
-    private final RemoteRepository remoteRepository;
+    private LocalRebuildService localRebuildService;
+    private LocalToolService localToolService;
+    private ResourceMatchService resourceMatchService;
+    private final Path buildReportsDir;
+    private BuildReportStorage buildReportStorage;
 
     public TestEnvironment(Class<?> testClass, RemoteRepository remoteRepository) {
-        this.remoteRepository = remoteRepository;
         String testName = testClass.getSimpleName();
-        testRunDir = Path.of("target/" + testName + "-" + UUID.randomUUID().toString()).toAbsolutePath()
+        testRunDir = Path.of("target/" + testName
+        //+ "-" + UUID.randomUUID().toString()
+        ).toAbsolutePath()
                 .normalize();
         remoteRepoDir = createDir(testRunDir, "remote");
         clonesDir = createDir(testRunDir, "clones");
         localMavenRepo = createDir(testRunDir, "m2");
         localRefRepo = createDir(testRunDir, "ref");
-
+        toolsDir = createDir(testRunDir, "tools");
+        buildReportsDir = createDir(testRunDir, "reports");
         Path remoteSource = Path.of("target/test-classes/ReferenceMavenRepositoryTest/remote").toAbsolutePath().normalize();
         try {
             Files.walkFileTree(remoteSource, new SimpleFileVisitor<Path>() {
@@ -241,5 +247,39 @@ public class TestEnvironment implements AutoCloseable {
 
     public String referenceRepoBaseUri() {
         return referenceRepoBaseUri;
+    }
+
+    public LocalRebuildService getLocalRebuildService() {
+        if (localRebuildService == null) {
+            localRebuildService = new LocalRebuildService(
+                    vertx,
+                    getCloneDirectoriesLayout(),
+                    getLocalToolService(),
+                    getReferenceMavenRepository(),
+                    getResourceMatchService(),
+                    getBuildReportStorage());
+        }
+        return localRebuildService;
+    }
+
+    private BuildReportStorage getBuildReportStorage() {
+        if (buildReportStorage == null) {
+            buildReportStorage = BuildReportStorage.local(vertx.fileSystem(), buildReportsDir);
+        }
+        return buildReportStorage;
+    }
+
+    public ResourceMatchService getResourceMatchService() {
+        if (resourceMatchService == null) {
+            resourceMatchService = ResourceMatchService.createMain();
+        }
+        return resourceMatchService;
+    }
+
+    public LocalToolService getLocalToolService() {
+        if (localToolService == null) {
+            localToolService = new LocalToolService(toolsDir);
+        }
+        return localToolService;
     }
 }

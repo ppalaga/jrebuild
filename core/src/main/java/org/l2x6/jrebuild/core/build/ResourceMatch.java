@@ -1,5 +1,7 @@
 package org.l2x6.jrebuild.core.build;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
 import java.util.Objects;
 
@@ -62,7 +64,10 @@ public record ResourceMatch(
     }
 
     public static record IndentedLine(int indentLevel, String line) {
-        public static IndentedLine parse(String line, int indentSize) {
+        static final int indentSize = 4;
+
+        @JsonCreator
+        public static IndentedLine parse(String line) {
             int i = 0;
             while (line.charAt(i) == ' ') {
                 i++;
@@ -83,6 +88,7 @@ public record ResourceMatch(
         }
 
         @Override
+        @JsonValue
         public String toString() {
             return toString(new StringBuilder()).toString();
         }

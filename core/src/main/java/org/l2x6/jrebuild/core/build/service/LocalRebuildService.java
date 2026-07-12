@@ -47,24 +47,6 @@ public record LocalRebuildService(
         ResourceMatchService matchService,
         BuildReportStorage buildReportStorage) {
 
-    static LocalRebuildService of(
-            Vertx vertx,
-            CloneDirectoriesLayout cloneDirectoriesLayout,
-            LocalToolService tools,
-            ReferenceMavenRepository referenceMavenRepository,
-            ResourceMatchService matchService,
-            BuildReportStorage buildReportStorage) {
-
-        return new LocalRebuildService(
-                vertx,
-                cloneDirectoriesLayout,
-                tools,
-                referenceMavenRepository,
-                matchService,
-                buildReportStorage);
-
-    }
-
     public Uni<BuildReport> ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility) {
         return ensureBuilt(buildRequest, requiredReproducibility, Clock.systemUTC());
     }
@@ -161,6 +143,15 @@ public record LocalRebuildService(
                                         .log()
                                         .execute()
                                         .assertSuccess();
+                            } catch (AssertionError e) {
+                                throw new BuildReportFailure(new BuildReport(
+                                        buildRequest,
+                                        ts,
+                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                                        Reproducibility.UNBUILDABLE,
+                                        Map.of(),
+                                        commitId,
+                                        "Could not build " + repo.uri() + "\n" + e.getMessage().trim()));
                             } catch (Throwable e) {
                                 throw new BuildReportFailure(new BuildReport(
                                         buildRequest,

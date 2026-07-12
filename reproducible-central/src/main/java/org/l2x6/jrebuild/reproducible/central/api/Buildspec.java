@@ -4,6 +4,11 @@
  */
 package org.l2x6.jrebuild.reproducible.central.api;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,9 +26,6 @@ import java.util.stream.Stream;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.reproducible.central.Shfmt;
 import org.l2x6.pom.tuner.model.Gav;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 public record Buildspec(
 
@@ -226,30 +228,36 @@ public record Buildspec(
                 .build();
         final String mini = shfmt.minify(document);
         final String json = shfmt.parseToJson(mini);
-        JsonNode f = mapper.readTree(json);
-        Builder b = new Builder();
+        try {
+            JsonNode f = mapper.readTree(json);
+            Builder b = new Builder();
 
-        for (JsonNode stmt : f.path("Stmts")) {
-            JsonNode assigns = stmt.path("Cmd").path("Assigns");
-            if (assigns.size() != 1) {
-                throw new IllegalStateException("Assigns.size() != 1 for node " + assigns);
+            for (JsonNode stmt : f.path("Stmts")) {
+                JsonNode assigns = stmt.path("Cmd").path("Assigns");
+                if (assigns.size() != 1) {
+                    throw new IllegalStateException("Assigns.size() != 1 for node " + assigns);
+                }
+                JsonNode assign = assigns.get(0);
+                String k = assign.path("Name").path("Value").asText();
+                JsonNode parts = assign.path("Value").path("Parts");
+                String value = join(k, mini, parts);
+                //log.info(key + "=" + value);
+                b.entry(k, value);
             }
-            JsonNode assign = assigns.get(0);
-            String k = assign.path("Name").path("Value").asString();
-            JsonNode parts = assign.path("Value").path("Parts");
-            String value = join(k, mini, parts);
-            //log.info(key + "=" + value);
-            b.entry(k, value);
+            return b.build(file);
+        } catch (JsonMappingException e) {
+            throw new RuntimeException(e);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
-        return b.build(file);
     }
 
     static String join(String key, String src, JsonNode parts) {
         if (parts.size() == 1) {
             JsonNode part0 = parts.get(0);
-            String type = part0.path("Type").asString();
+            String type = part0.path("Type").asText();
             if (type.equals("Lit")) {
-                return part0.path("Value").asString();
+                return part0.path("Value").asText();
             } else if (type.equals("DblQuoted")) {
                 int start = part0.path("Left").path("Offset").asInt() + 1;
                 int end = part0.path("Right").path("Offset").asInt();

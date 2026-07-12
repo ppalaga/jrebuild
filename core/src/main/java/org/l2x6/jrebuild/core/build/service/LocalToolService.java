@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.cliassured.sdkman.InstalledCandidate;
 import org.cliassured.sdkman.Sdk;
+import org.cliassured.sdkman.SdkmanSpec;
 import org.l2x6.jrebuild.api.os.Packager;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
@@ -26,13 +27,14 @@ public class LocalToolService {
             Packager p = null;
             switch (k) {
             case "sdkman": {
-                p = new Sdkman(cacheDir.resolve("sdkman"));
+                SdkmanSpec defaultSdkMan = org.cliassured.sdkman.Sdkman.given();
+                // Reuse ~/.sdkman if available to speedup local tests
+                p = new Sdkman(defaultSdkMan.isInstalled() ? defaultSdkMan.home() : cacheDir.resolve("sdkman"));
                 break;
             }
             default:
                 throw new IllegalArgumentException("Unexpected packager: " + k);
             }
-            ;
             return new PackagerEntry(p, new ConcurrentHashMap<>());
         });
         String toolKey = tool.name() + "-" + tool.version();

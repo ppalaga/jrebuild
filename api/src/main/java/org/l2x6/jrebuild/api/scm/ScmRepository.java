@@ -14,6 +14,8 @@ import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.pom.tuner.model.Gav;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public record ScmRepository(
         String source,
         String type,
@@ -56,14 +58,17 @@ public record ScmRepository(
         this.uri = uri;
     }
 
+    @JsonIgnore
     public boolean isUnknown() {
         return UNKNOWN.equals(type);
     }
 
+    @JsonIgnore
     public boolean isFailed() {
         return FAILED.equals(type);
     }
 
+    @JsonIgnore
     public boolean isKnown() {
         return !UNKNOWN.equals(type);
     }
@@ -78,6 +83,7 @@ public record ScmRepository(
         return COMPARATOR.compare(this, o);
     }
 
+    @JsonIgnore
     public boolean isUnknownOrFailed() {
         return UNKNOWN.equals(type) || FAILED.equals(type);
     }

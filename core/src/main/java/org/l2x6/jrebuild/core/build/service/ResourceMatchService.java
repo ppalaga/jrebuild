@@ -51,6 +51,10 @@ public interface ResourceMatchService {
 
     public ResourceMatch compare(Resource referenceArtifact, Resource rebuiltArtifact);
 
+    public static ResourceMatchService createMain() {
+        return new BaseResourceMatchService();
+    }
+
     static class BaseResourceMatchService implements ResourceMatchService {
 
         private final Map<String, ResourceMatchService> specializedServices;
