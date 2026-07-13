@@ -3,7 +3,6 @@ package org.l2x6.jrebuild.core.build;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 
 public class ResourceMatchTest {
 
@@ -19,15 +18,16 @@ public class ResourceMatchTest {
         ResourceMatch match = new ResourceMatch(
                 ResourceMatchLevel.BUILDABLE,
                 "target/b.txt",
-                List.of(
-                        IndentedLine.of("--- target/a.txt"),
-                        IndentedLine.of("+++ target/b.txt"),
-                        IndentedLine.of("@@ -1,1 +1,1 @@"),
-                        IndentedLine.of("-foo"),
-                        IndentedLine.of("+bar")),
+                """
+                        --- target/a.txt
+                        +++ target/b.txt
+                        @@ -1,1 +1,1 @@
+                        -foo
+                        +bar
+                        """,
                 List.of());
         Assertions.assertThat(match.toString()).isEqualTo(("""
-                MISMATCH: target/b.txt:
+                BUILDABLE: target/b.txt:
                     --- target/a.txt
                     +++ target/b.txt
                     @@ -1,1 +1,1 @@
@@ -41,17 +41,18 @@ public class ResourceMatchTest {
         ResourceMatch match = new ResourceMatch(
                 ResourceMatchLevel.BUILDABLE,
                 "app.war",
-                List.of(IndentedLine.of("top-level note")),
+                "top-level note",
                 List.of(
                         new ResourceMatch(
                                 ResourceMatchLevel.BUILDABLE,
                                 "WEB-INF/config.txt",
-                                List.of(
-                                        IndentedLine.of("--- a/config.txt"),
-                                        IndentedLine.of("+++ b/config.txt"),
-                                        IndentedLine.of("@@ -1,1 +1,1 @@"),
-                                        IndentedLine.of("-v1"),
-                                        IndentedLine.of("+v2")),
+                                """
+                                        --- a/config.txt
+                                        +++ b/config.txt
+                                        @@ -1,1 +1,1 @@
+                                        -v1
+                                        +v2
+                                        """,
                                 List.of()),
                         new ResourceMatch(
                                 ResourceMatchLevel.BUILDABLE,
@@ -61,23 +62,24 @@ public class ResourceMatchTest {
                                         new ResourceMatch(
                                                 ResourceMatchLevel.SUFFICIENT,
                                                 "greeting.txt",
-                                                List.of(
-                                                        IndentedLine.of("--- a/greeting.txt"),
-                                                        IndentedLine.of("+++ b/greeting.txt"),
-                                                        IndentedLine.of("@@ -1,1 +1,1 @@"),
-                                                        IndentedLine.of("-hello\\r"),
-                                                        IndentedLine.of("+hello\\r\\n")),
+                                                """
+                                                        --- a/greeting.txt
+                                                        +++ b/greeting.txt
+                                                        @@ -1,1 +1,1 @@
+                                                        -hello\\r
+                                                        +hello\\r\\n
+                                                        """,
                                                 List.of())))));
         Assertions.assertThat(match.toString()).isEqualTo(("""
-                MISMATCH: app.war:
+                BUILDABLE: app.war:
                     top-level note
-                MISMATCH: WEB-INF/config.txt:
+                BUILDABLE: WEB-INF/config.txt:
                         --- a/config.txt
                         +++ b/config.txt
                         @@ -1,1 +1,1 @@
                         -v1
                         +v2
-                MISMATCH: WEB-INF/lib/lib.jar
+                BUILDABLE: WEB-INF/lib/lib.jar
                 SUFFICIENT: greeting.txt:
                             --- a/greeting.txt
                             +++ b/greeting.txt

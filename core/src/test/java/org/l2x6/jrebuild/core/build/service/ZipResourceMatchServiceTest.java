@@ -10,11 +10,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.Resource.FileResource;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
-import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService.ZipResourceMatchService;
@@ -55,13 +53,13 @@ public class ZipResourceMatchServiceTest {
                                 new ResourceMatch(
                                         ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/jar2.jar!greeting.txt",
-                                        split("""
+                                        """
                                                 --- target/zip-test/jar1.jar!greeting.txt
                                                 +++ target/zip-test/jar2.jar!greeting.txt
                                                 @@ -1,1 +1,1 @@
                                                 -Hello World
                                                 +Hello Changed World
-                                                """),
+                                                """.trim(),
                                         List.of()))));
 
         assertCompareZipFile(
@@ -77,13 +75,13 @@ public class ZipResourceMatchServiceTest {
                                 new ResourceMatch(
                                         ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/war2.war!WEB-INF/classes/config.txt",
-                                        split("""
+                                        """
                                                 --- target/zip-test/war1.war!WEB-INF/classes/config.txt
                                                 +++ target/zip-test/war2.war!WEB-INF/classes/config.txt
                                                 @@ -1,1 +1,1 @@
                                                 -version=1.0
                                                 +version=2.0
-                                                """),
+                                                """.trim(),
                                         List.of()),
                                 new ResourceMatch(
                                         ResourceMatchLevel.BUILDABLE,
@@ -93,13 +91,13 @@ public class ZipResourceMatchServiceTest {
                                                 new ResourceMatch(
                                                         ResourceMatchLevel.BUILDABLE,
                                                         "target/zip-test/war2.war!WEB-INF/lib/lib.jar!greeting.txt",
-                                                        split("""
+                                                        """
                                                                 --- target/zip-test/war1.war!WEB-INF/lib/lib.jar!greeting.txt
                                                                 +++ target/zip-test/war2.war!WEB-INF/lib/lib.jar!greeting.txt
                                                                 @@ -1,1 +1,1 @@
                                                                 -Hello World
                                                                 +Hello Changed World
-                                                                """),
+                                                                """.trim(),
                                                         List.of()))))));
     }
 
@@ -116,8 +114,8 @@ public class ZipResourceMatchServiceTest {
             Assertions.assertThat(actual.path()).isEqualTo(path);
         }
         {
-            Resource ar = new FileResource(p, p.getFileName().toString());
-            Resource br = new FileResource(p, p.getFileName().toString());
+            Resource ar = new FileResource(p, p.toString());
+            Resource br = new FileResource(p, p.toString());
             ResourceMatch actual = service.compare(ar, br);
             Assertions.assertThat(actual.level()).isEqualTo(ResourceMatchLevel.PERFECT);
             Assertions.assertThat(actual.path()).isEqualTo(p.toString().replace('\\', '/'));
@@ -147,8 +145,8 @@ public class ZipResourceMatchServiceTest {
             }
         }
         {
-            Resource ar = new FileResource(ap, ap.getFileName().toString());
-            Resource br = new FileResource(bp, bp.getFileName().toString());
+            Resource ar = new FileResource(ap, ap.toString());
+            Resource br = new FileResource(bp, bp.toString());
             ResourceMatch actual = service.compare(ar, br);
             try {
                 Assertions.assertThat(actual).isEqualTo(expected);
@@ -184,9 +182,4 @@ public class ZipResourceMatchServiceTest {
         return baos.toByteArray();
     }
 
-    static List<IndentedLine> split(String string) {
-        return JrebuildUtils.lines(string)
-                .map(l -> IndentedLine.parse(l))
-                .toList();
-    }
 }

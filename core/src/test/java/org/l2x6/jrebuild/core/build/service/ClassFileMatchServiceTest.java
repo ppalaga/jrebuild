@@ -6,11 +6,9 @@ import java.nio.file.Path;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.Resource.FileResource;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
-import org.l2x6.jrebuild.core.build.ResourceMatch.IndentedLine;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService;
 import org.l2x6.jrebuild.core.build.service.ResourceMatchService.BaseResourceMatchService.ClassFileMatchService;
@@ -43,7 +41,7 @@ public class ClassFileMatchServiceTest {
                 new ResourceMatch(
                         ResourceMatchLevel.BUILDABLE,
                         "target/test-classes/org/l2x6/jrebuild/core/build/service/samples/ClassPerson2.class",
-                        split("""
+                        """
                                 flags: public super -> final public super
                                 name: org.l2x6.jrebuild.core.build.service.samples.ClassPerson1 -> org.l2x6.jrebuild.core.build.service.samples.ClassPerson2
                                 fields:
@@ -96,14 +94,9 @@ public class ClassFileMatchServiceTest {
                                             +5: {opcode: GETFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson2, field name: lastName, field type: Ljava/lang/String;}
                                             +8: {opcode: INVOKEDYNAMIC, name: makeConcatWithConstants, descriptor: (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;, bootstrap method: STATIC java/lang/invoke/StringConcatFactory::makeConcatWithConstants, arguments: ['firstName=\\u0001, lastName=\\u0001]']}
                                              13: {opcode: ARETURN}
-                                """),
+                                """
+                                .trim(),
                         List.of()));
-    }
-
-    static List<IndentedLine> split(String string) {
-        return JrebuildUtils.lines(string)
-                .map(l -> IndentedLine.parse(l))
-                .toList();
     }
 
     static String path(Class<?> cl) {
@@ -134,15 +127,14 @@ public class ClassFileMatchServiceTest {
             try {
                 Assertions.assertThat(actual).isEqualTo(expected);
             } catch (AssertionError e) {
-                System.out.println("==== eq " + actual.equals(expected));
                 Files.writeString(Path.of("target/match-expected.txt"), expected.toString());
                 Files.writeString(Path.of("target/match-actual.txt"), actual.toString());
                 throw e;
             }
         }
         {
-            Resource ar = new FileResource(ap, ap.getFileName().toString());
-            Resource br = new FileResource(bp, bp.getFileName().toString());
+            Resource ar = new FileResource(ap, ap.toString());
+            Resource br = new FileResource(bp, bp.toString());
             ResourceMatch actual = service.compare(ar, br);
             try {
                 Assertions.assertThat(actual).isEqualTo(expected);

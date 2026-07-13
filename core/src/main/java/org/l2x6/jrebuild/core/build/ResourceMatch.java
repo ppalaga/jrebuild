@@ -4,12 +4,22 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringTokenizer;
 
-public record ResourceMatch(
-        ResourceMatchLevel level,
+public record ResourceMatch(ResourceMatchLevel level,
         String path,
-        List<IndentedLine> messages,
+        String diff,
         List<ResourceMatch> children) {
+
+    public ResourceMatch(ResourceMatchLevel level,
+            String path,
+            String diff,
+            List<ResourceMatch> children) {
+        this.children = Objects.requireNonNull(children, "children");
+        this.diff = diff != null && diff.isEmpty() ? null : diff;
+        this.level = Objects.requireNonNull(level, "level");
+        this.path = Objects.requireNonNull(path, "path");
+    }
 
     public static ResourceMatch of(ResourceMatchLevel level, String path) {
         return level.match(path);
@@ -19,30 +29,25 @@ public record ResourceMatch(
         return toString(new StringBuilder(), 0).toString();
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(children, level, messages, path);
-    }
-
     public StringBuilder toString(StringBuilder sb, int indentLevel) {
         if (sb.length() != 0) {
             sb.append('\n');
         }
         sb.append(level);
-        if (path != null || (messages != null && !messages.isEmpty())) {
+        if (path != null || (diff != null && !diff.isEmpty())) {
             if (path != null) {
                 sb.append(": ").append(path);
             }
-            if (messages != null) {
-                int size = messages.size();
-                if (size == 1 && path == null) {
-                    sb.append(": ").append(messages.get(0));
+            if (diff != null && !diff.isEmpty()) {
+                if (!diff.contains("\n") && path == null) {
+                    sb.append(": ").append(diff);
                 } else {
                     sb.append(":");
-                    for (IndentedLine msg : messages) {
+                    StringTokenizer st = new StringTokenizer(diff, "\n\r");
+                    while (st.hasMoreTokens()) {
                         sb.append('\n');
                         indent(sb, indentLevel + 1);
-                        msg.toString(sb);
+                        sb.append(st.nextToken());
                     }
                 }
             }
