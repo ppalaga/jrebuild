@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.core.build.service.TestEnvironment;
 import org.l2x6.jrebuild.core.build.service.TestEnvironment.RemoteRepository;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -103,7 +104,7 @@ public class ReferenceMavenRepositoryTest {
                         .assertThatThrownBy(
                                 () -> repo.download(gavtcTxt.getRepositoryPath(), localPath, pomSha1HexString).await()
                                         .indefinitely())
-                        .isInstanceOf(IllegalStateException.class)
+                        .isInstanceOf(StackTraceLessException.class)
                         .hasMessage("SHA1 mismatch for " + testEnv.referenceRepoBaseUri()
                                 + "/org/l2x6/pom-tuner/pom-tuner/4.10.0/pom-tuner-4.10.0.txt: expected " + pomSha1HexString
                                 + " but got " + Files.readString(gavtcTxtPathSha1));
@@ -116,7 +117,7 @@ public class ReferenceMavenRepositoryTest {
                 Files.writeString(gavtcAdocPathSha1, pomSha1HexString); // intentionally incorrect
                 Assertions
                         .assertThatThrownBy(() -> repo.resolve(gavtcAdoc).await().indefinitely())
-                        .isInstanceOf(IllegalStateException.class)
+                        .isInstanceOf(StackTraceLessException.class)
                         .hasMessage("SHA1 mismatch for " + testEnv.referenceRepoBaseUri()
                                 + "/org/l2x6/pom-tuner/pom-tuner/4.10.0/pom-tuner-4.10.0.adoc: expected " + pomSha1HexString
                                 + " but got " + Files.readString(gavtcTxtPathSha1));

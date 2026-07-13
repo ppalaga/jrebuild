@@ -314,7 +314,7 @@ public class ReferenceMavenRepository {
                                 }
                                 final String actualSha1 = HexFormat.of().formatHex(digest.digest());
                                 if (!actualSha1.equals(expectedSha1)) {
-                                    return closeDeleteAndReturnFailure(tempTarget, asyncFile,
+                                    return deleteAndReturnFailure(tempTarget, asyncFile,
                                             "SHA1 mismatch for " + url + ": expected " + expectedSha1
                                                     + " but got " + actualSha1);
                                 }
@@ -325,9 +325,14 @@ public class ReferenceMavenRepository {
     }
 
     Uni<Void> closeDeleteAndReturnFailure(Path file, AsyncFile asyncFile, String message) {
-        return asyncFile.close().chain(() -> fileSystem
+        return asyncFile.close()
+                .chain(() -> deleteAndReturnFailure(file, asyncFile, message));
+    }
+
+    Uni<Void> deleteAndReturnFailure(Path file, AsyncFile asyncFile, String message) {
+        return fileSystem
                 .delete(file.toString())
-                .chain(() -> Uni.createFrom().failure(new StackTraceLessException(message))));
+                .chain(() -> Uni.createFrom().failure(new StackTraceLessException(message)));
     }
 
     /**
