@@ -16,6 +16,7 @@ import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildGroup.Builder;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
+import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository.HttpStatusException;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout.CloneDirectory;
 import org.l2x6.pom.tuner.ExpressionEvaluator;
@@ -68,7 +69,9 @@ public class FindReferenceArtifactsService {
                 .transformToUni((Set<Gav> gavs) -> Multi.createFrom().iterable(gavs)
                         .onItem()
                         .transformToUniAndMerge(sourceTreeGav -> referenceMavenRepository.list(sourceTreeGav)
-                                .onFailure().recoverWithNull()) // missing items would throw a failure
+                                .onFailure(
+                                        e -> (e instanceof HttpStatusException && ((HttpStatusException) e).getStatus() == 404))
+                                .recoverWithNull()) // missing items would throw a failure
                         .filter(Objects::nonNull) // remove the missing ones
                         .collect().asList()
                         .map(publishedGavtcs -> { // publishedGavtcs is List<List<Gavtc>>

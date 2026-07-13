@@ -151,7 +151,7 @@ public class DependencyCollectorTest {
                     .collect(Collectors.toList());
             String[] expected = {
                     """
-                            🟢 org.l2x6.jrebuild.external:jrebuild-external-impl:2.0.0
+                            🟢 org.l2x6.jrebuild.external:jrebuild-external-impl:2.0.0:jar
                             `- 🟢 org.l2x6.jrebuild.external:jrebuild-external-intermediary:2.0.0:jar
                                `- 🟢 org.l2x6.jrebuild.external:jrebuild-external-api:2.0.0:jar
                             """
@@ -192,7 +192,7 @@ public class DependencyCollectorTest {
                     .collect(Collectors.toList());
             String[] expected = {
                     """
-                            🟢 org.l2x6.jrebuild.external:jrebuild-external-non-existent-dependency-owner:2.0.0
+                            🟢 org.l2x6.jrebuild.external:jrebuild-external-non-existent-dependency-owner:2.0.0:jar
                             """
             };
             Assertions.assertThat(trees).containsExactly(expected);
@@ -212,7 +212,7 @@ public class DependencyCollectorTest {
                     .collect(Collectors.toList());
             String[] expected = {
                     """
-                            🟢 org.l2x6.jrebuild.external:jrebuild-external-non-existent-dependency-owner:2.0.0
+                            🟢 org.l2x6.jrebuild.external:jrebuild-external-non-existent-dependency-owner:2.0.0:jar
                             """
             };
             Assertions.assertThat(trees).containsExactly(expected);

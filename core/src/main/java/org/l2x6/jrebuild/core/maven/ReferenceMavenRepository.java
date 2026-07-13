@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.StringJoiner;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -115,7 +116,7 @@ public class ReferenceMavenRepository {
                         return webClient.getAbs(url)
                                 .send().chain(resp -> {
                                     if (resp.statusCode() != 200) {
-                                        return Uni.createFrom().failure(new RuntimeException(
+                                        return Uni.createFrom().failure(new HttpStatusException(resp.statusCode(),
                                                 "Failed to download " + url + ": HTTP " + resp.statusCode()));
                                     }
                                     final List<Gavtc> result = new ArrayList<>();
@@ -267,7 +268,7 @@ public class ReferenceMavenRepository {
                     return webClient.getAbs(sha1Url).send()
                             .chain(resp -> {
                                 if (resp.statusCode() != 200) {
-                                    return Uni.createFrom().failure(new StackTraceLessException(
+                                    return Uni.createFrom().failure(new HttpStatusException(resp.statusCode(),
                                             "Failed to download " + sha1Url + ": HTTP " + resp.statusCode()));
                                 }
                                 final Buffer body = resp.body();
@@ -301,7 +302,8 @@ public class ReferenceMavenRepository {
                     try {
                         digest = MessageDigest.getInstance("SHA-1");
                     } catch (NoSuchAlgorithmException e) {
-                        return closeDeleteAndReturnFailure(tempTarget, asyncFile, e.getMessage());
+                        return closeDeleteAndReturnFailure(tempTarget, asyncFile,
+                                () -> new StackTraceLessException(e.getMessage()));
                     }
                     WriteStream<Buffer> sha1Stream = WriteStream
                             .newInstance(new DigestWriteStream(asyncFile.getDelegate(), digest));
@@ -310,13 +312,15 @@ public class ReferenceMavenRepository {
                             .send().chain(resp -> {
                                 if (resp.statusCode() != 200) {
                                     return closeDeleteAndReturnFailure(tempTarget, asyncFile,
-                                            "Failed to download " + url + ": HTTP " + resp.statusCode());
+                                            () -> new HttpStatusException(resp.statusCode(),
+                                                    "Failed to download " + url + ": HTTP " + resp.statusCode()));
                                 }
                                 final String actualSha1 = HexFormat.of().formatHex(digest.digest());
                                 if (!actualSha1.equals(expectedSha1)) {
                                     return deleteAndReturnFailure(tempTarget, asyncFile,
-                                            "SHA1 mismatch for " + url + ": expected " + expectedSha1
-                                                    + " but got " + actualSha1);
+                                            () -> new StackTraceLessException(
+                                                    "SHA1 mismatch for " + url + ": expected " + expectedSha1
+                                                            + " but got " + actualSha1));
                                 }
                                 return fileSystem.move(tempTarget.toString(), targetPath.toString(),
                                         MutinyConstants.COPY_ATTRIBUTES_REPLACE_ATOMIC_NOFOLLOW);
@@ -324,15 +328,15 @@ public class ReferenceMavenRepository {
                 });
     }
 
-    Uni<Void> closeDeleteAndReturnFailure(Path file, AsyncFile asyncFile, String message) {
+    Uni<Void> closeDeleteAndReturnFailure(Path file, AsyncFile asyncFile, Supplier<Throwable> exception) {
         return asyncFile.close()
-                .chain(() -> deleteAndReturnFailure(file, asyncFile, message));
+                .chain(() -> deleteAndReturnFailure(file, asyncFile, exception));
     }
 
-    Uni<Void> deleteAndReturnFailure(Path file, AsyncFile asyncFile, String message) {
+    Uni<Void> deleteAndReturnFailure(Path file, AsyncFile asyncFile, Supplier<Throwable> exception) {
         return fileSystem
                 .delete(file.toString())
-                .chain(() -> Uni.createFrom().failure(new StackTraceLessException(message)));
+                .chain(() -> Uni.createFrom().failure(exception.get()));
     }
 
     /**
@@ -485,6 +489,21 @@ public class ReferenceMavenRepository {
             delegate.drainHandler(handler);
             return this;
         }
+    }
+
+    public static class HttpStatusException extends StackTraceLessException {
+        private static final long serialVersionUID = 1L;
+        private final int status;
+
+        public HttpStatusException(int status, String message) {
+            super(message);
+            this.status = status;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
     }
 
     static record ExistsAndChecksumMatches(boolean exists, boolean checksumMatches) {

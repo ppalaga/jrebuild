@@ -68,7 +68,7 @@ public class FindPncBuildsCommandIT {
         String outString = new String(out.toByteArray(), StandardCharsets.UTF_8);
         Assertions.assertThat(outString.replace("\r", "")).contains("""
                  ❌ 🟢root:root:0.0.0/null
-                `- ✅ 🟢com.fasterxml.woodstox:woodstox-core:7.1.1/7.1.1.redhat-00002
+                `- ✅ 🟢com.fasterxml.woodstox:woodstox-core:7.1.1:jar/7.1.1.redhat-00002
                    +- ✅ 👴com.fasterxml:oss-parent:68:pom/68.0.0.redhat-00004
                    `- ✅ 🟢org.codehaus.woodstox:stax2-api:4.2.2:jar/4.2.2.redhat-00003
                       `- ✅ 👴com.fasterxml:oss-parent:55:pom/55.0.0.redhat-00003
