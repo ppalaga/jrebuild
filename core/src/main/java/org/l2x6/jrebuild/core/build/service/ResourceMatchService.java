@@ -68,6 +68,7 @@ public interface ResourceMatchService {
             Stream.of(".zip", ".jar", ".ear", ".war").forEach(k -> delegates.put(k, zipMatcher));
             Stream.of(".adoc", ".java", ".html", ".htm", ".md", ".mf", ".txt")
                     .forEach(k -> delegates.put(k, textResourceMatchService));
+            delegates.put(".class", new ClassFileMatchService());
             this.specializedServices = Collections.unmodifiableMap(delegates);
         }
 
@@ -109,21 +110,20 @@ public interface ResourceMatchService {
                 if (eolSensitiveDeltas.isEmpty()) {
                     return ResourceMatchLevel.PERFECT.match(rebuilt.location());
                 }
-                List<IndentedLine> msg = UnifiedDiffUtils.generateUnifiedDiff(
+                List<String> unifiedDiffLines = UnifiedDiffUtils.generateUnifiedDiff(
                         reference.location(),
-                        rebuilt.location(), refEolLines, diff, 3)
-                        .stream()
-                        .map(IndentedLine::of)
-                        .toList();
+                        rebuilt.location(), refEolLines, diff, 3);
+                String joinedDiff = unifiedDiffLines.isEmpty() ? null : unifiedDiffLines.stream()
+                        .collect(Collectors.joining("\n"));
 
                 eolSensitiveDeltas.stream().map(AbstractDelta::toString).collect(Collectors.joining("\n"));
                 List<AbstractDelta<Line>> eolInsensitiveDeltas = DiffUtils
                         .diff(rebuiltLines, refLines, EOL_INSENSITIVE_EQUALS).getDeltas();
                 if (eolInsensitiveDeltas.isEmpty()) {
                     /* There are only EOL diffs */
-                    return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.location(), msg, List.of());
+                    return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.location(), joinedDiff, List.of());
                 }
-                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.location(), msg, List.of());
+                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.location(), joinedDiff, List.of());
             }
 
         }
@@ -202,7 +202,7 @@ public interface ResourceMatchService {
                 compareAttributeNames(left.attributes(), right.attributes(), out);
                 compareFields(left, right, out);
                 compareMethods(left, right, out);
-                return new ResourceMatch(out.level, rebuiltResource.location(), out.messages, List.of());
+                return new ResourceMatch(out.level, rebuiltResource.location(), out.toString(), List.of());
             }
 
             private static void compareHeader(ClassModel left, ClassModel right, DiffBuilder out) {
@@ -529,7 +529,18 @@ public interface ResourceMatchService {
 
                 @Override
                 public String toString() {
-                    return messages.toString();
+                    StringBuilder sb = new StringBuilder();
+                    for (IndentedLine line : messages) {
+                        line.toString(sb);
+                        sb.append('\n');
+                    }
+                    if (sb.length() > 0) {
+                        sb.setLength(sb.length() - 1); // remove the trailing newline
+                        return sb.toString();
+                    } else {
+                        return null;
+                    }
+
                 }
 
             }
