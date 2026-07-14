@@ -4,6 +4,7 @@
  */
 package org.l2x6.jrebuild.core.build;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ public record BuildGroup(
         FqScmRef scmRef,
         @JsonSerialize(contentUsing = Serializers.GavtcSerializer.class) @JsonDeserialize(
                 contentUsing = Serializers.GavtcDeserializer.class) Set<Gavtc> artifacts,
-        int hashCode_) {
+        @JsonIgnore int hashCode_) {
 
     public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts, int hashCode_) {
         this.scmRef = Objects.requireNonNull(scmRef);
