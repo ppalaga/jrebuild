@@ -87,11 +87,11 @@ public record LocalRebuildService(
         final ScmRepository repo = scmRef.repository();
         if (!"git".equals(repo.type())) {
             return Uni.createFrom()
-                    .item(buildReportFaulure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
+                    .item(buildReportFailure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
         }
         OsArch currentOsArch = OsArch.current();
         if (!currentOsArch.equals(buildRequest.osArch())) {
-            return Uni.createFrom().item(buildReportFaulure(buildRequest, clock, ts, repo,
+            return Uni.createFrom().item(buildReportFailure(buildRequest, clock, ts, repo,
                     "The current OS " + currentOsArch + " does not match the requested OS " + buildRequest.osArch()));
         }
 
@@ -227,14 +227,14 @@ public record LocalRebuildService(
             if (e instanceof BuildReportFailure) {
                 return ((BuildReportFailure) e).buildReport;
             } else {
-                return buildReportFaulure(buildRequest, clock, ts, repo,
+                return buildReportFailure(buildRequest, clock, ts, repo,
                         "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e));
             }
         });
 
     }
 
-    static BuildReport buildReportFaulure(BuildRequest buildRequest, Clock clock, ZonedDateTime ts,
+    static BuildReport buildReportFailure(BuildRequest buildRequest, Clock clock, ZonedDateTime ts,
             final ScmRepository repo, String message) {
         return new BuildReport(
                 buildRequest,

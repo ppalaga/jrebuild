@@ -23,7 +23,7 @@ public record BuildReport(
         /** Can be {@code null} */
         String commitId,
         /** Can be {@code null} */
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX") String errorMessage) {
+        String errorMessage) {
 
     private static Comparator<BuildReport> BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR = Comparator
             .comparing(BuildReport::reproducibility).thenComparing(BuildReport::buildStart);

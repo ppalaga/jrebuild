@@ -15,6 +15,13 @@ public class CommonUtils {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         t.printStackTrace(pw);
-        return sw.toString();
+        StringBuffer buf = sw.getBuffer();
+        int last = buf.length() - 1;
+        while (last >= 0 && Character.isWhitespace(buf.charAt(last))) {
+            last--;
+        }
+        buf.setLength(last + 1);
+        String result = buf.toString().replace("\t", "    ");
+        return result;
     }
 }
