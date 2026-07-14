@@ -46,13 +46,13 @@ public class ZipResourceMatchServiceTest {
                 "target/zip-test/jar2.jar",
                 jar1, jar2,
                 new ResourceMatch(
-                        ResourceMatchLevel.BUILDABLE,
                         "target/zip-test/jar2.jar",
+                        ResourceMatchLevel.BUILDABLE,
                         null,
                         List.of(
                                 new ResourceMatch(
-                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/jar2.jar!greeting.txt",
+                                        ResourceMatchLevel.BUILDABLE,
                                         """
                                                 --- target/zip-test/jar1.jar!greeting.txt
                                                 +++ target/zip-test/jar2.jar!greeting.txt
@@ -68,13 +68,13 @@ public class ZipResourceMatchServiceTest {
                 "target/zip-test/war2.war",
                 war1, war2,
                 new ResourceMatch(
-                        ResourceMatchLevel.BUILDABLE,
                         "target/zip-test/war2.war",
+                        ResourceMatchLevel.BUILDABLE,
                         null,
                         List.of(
                                 new ResourceMatch(
-                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/war2.war!WEB-INF/classes/config.txt",
+                                        ResourceMatchLevel.BUILDABLE,
                                         """
                                                 --- target/zip-test/war1.war!WEB-INF/classes/config.txt
                                                 +++ target/zip-test/war2.war!WEB-INF/classes/config.txt
@@ -84,13 +84,13 @@ public class ZipResourceMatchServiceTest {
                                                 """.trim(),
                                         List.of()),
                                 new ResourceMatch(
-                                        ResourceMatchLevel.BUILDABLE,
                                         "target/zip-test/war2.war!WEB-INF/lib/lib.jar",
+                                        ResourceMatchLevel.BUILDABLE,
                                         null,
                                         List.of(
                                                 new ResourceMatch(
-                                                        ResourceMatchLevel.BUILDABLE,
                                                         "target/zip-test/war2.war!WEB-INF/lib/lib.jar!greeting.txt",
+                                                        ResourceMatchLevel.BUILDABLE,
                                                         """
                                                                 --- target/zip-test/war1.war!WEB-INF/lib/lib.jar!greeting.txt
                                                                 +++ target/zip-test/war2.war!WEB-INF/lib/lib.jar!greeting.txt

@@ -30,8 +30,8 @@ public class TextResourceMatchServiceTest {
 
     static void assertCompareTexts(ResourceMatchService service) throws IOException {
         assertCompareText(service, "foo", "bar", new ResourceMatch(
-                ResourceMatchLevel.BUILDABLE,
                 "target/b.txt",
+                ResourceMatchLevel.BUILDABLE,
                 """
                         --- target/a.txt
                         +++ target/b.txt
@@ -41,8 +41,8 @@ public class TextResourceMatchServiceTest {
                         """.trim(),
                 List.of()));
         assertCompareText(service, "foo\nbar", "foo\r\nbar", new ResourceMatch(
-                ResourceMatchLevel.SUFFICIENT,
                 "target/b.txt",
+                ResourceMatchLevel.SUFFICIENT,
                 """
                         --- target/a.txt
                         +++ target/b.txt
@@ -53,8 +53,8 @@ public class TextResourceMatchServiceTest {
                         """.trim(),
                 List.of()));
         assertCompareText(service, "foo\n", "foo\r\n", new ResourceMatch(
-                ResourceMatchLevel.SUFFICIENT,
                 "target/b.txt",
+                ResourceMatchLevel.SUFFICIENT,
                 """
                         --- target/a.txt
                         +++ target/b.txt
@@ -149,8 +149,8 @@ public class TextResourceMatchServiceTest {
                             """);
             ResourceMatch actual = service.compare(a, b);
             Assertions.assertThat(actual).isEqualTo(new ResourceMatch(
-                    ResourceMatchLevel.SUFFICIENT,
                     "target/b/org/foo/bar/1.2.3/bar-1.2.3-javadoc.jar!org/foo/bar/Example.html",
+                    ResourceMatchLevel.SUFFICIENT,
                     """
                             --- target/a/org/foo/bar/1.2.3/bar-1.2.3-javadoc.jar!org/foo/bar/Example.html
                             +++ target/b/org/foo/bar/1.2.3/bar-1.2.3-javadoc.jar!org/foo/bar/Example.html

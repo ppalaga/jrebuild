@@ -10,18 +10,18 @@ import org.l2x6.pom.tuner.model.Gavtc;
 
 public record BuildReport(
         BuildRequest buildRequest,
-        /** When the build was started */
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX") ZonedDateTime buildStart,
-        /** How long the build took */
-        Duration buildDuration,
+        /** Can be {@code null} */
+        String commitId,
         /**
          * Overall reproducibility aggregated over all artifacts
          */
         Reproducibility reproducibility,
         /** Reproducibility status of individual artifacts */
+        /** When the build was started */
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX") ZonedDateTime buildStart,
+        /** How long the build took */
+        Duration buildDuration,
         Map<Gavtc, ResourceMatch> builtArtifacts,
-        /** Can be {@code null} */
-        String commitId,
         /** Can be {@code null} */
         String errorMessage) {
 

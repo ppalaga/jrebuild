@@ -6,13 +6,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringTokenizer;
 
-public record ResourceMatch(ResourceMatchLevel level,
-        String path,
+public record ResourceMatch(String path,
+        ResourceMatchLevel level,
         String diff,
         List<ResourceMatch> children) {
 
-    public ResourceMatch(ResourceMatchLevel level,
-            String path,
+    public ResourceMatch(String path,
+            ResourceMatchLevel level,
             String diff,
             List<ResourceMatch> children) {
         this.children = Objects.requireNonNull(children, "children");

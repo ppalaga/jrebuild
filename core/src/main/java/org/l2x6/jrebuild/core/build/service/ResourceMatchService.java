@@ -160,9 +160,9 @@ public interface ResourceMatchService {
                         .diff(rebuiltLines, refLines, altEqualizer).getDeltas();
                 if (eolInsensitiveDeltas.isEmpty()) {
                     /* There are only EOL diffs */
-                    return new ResourceMatch(ResourceMatchLevel.SUFFICIENT, rebuilt.location(), joinedDiff, List.of());
+                    return new ResourceMatch(rebuilt.location(), ResourceMatchLevel.SUFFICIENT, joinedDiff, List.of());
                 }
-                return new ResourceMatch(ResourceMatchLevel.BUILDABLE, rebuilt.location(), joinedDiff, List.of());
+                return new ResourceMatch(rebuilt.location(), ResourceMatchLevel.BUILDABLE, joinedDiff, List.of());
             }
 
         }
@@ -213,7 +213,7 @@ public interface ResourceMatchService {
                         level = ResourceMatchLevel.BUILDABLE;
                     }
                 }
-                return new ResourceMatch(level, rebuiltArtifact.location(), null, Collections.unmodifiableList(result));
+                return new ResourceMatch(rebuiltArtifact.location(), level, null, Collections.unmodifiableList(result));
             }
 
             static Resource bytes(String zipFilePath, ZipFile zipFile, ZipArchiveEntry entry) {
@@ -241,7 +241,7 @@ public interface ResourceMatchService {
                 compareAttributeNames(left.attributes(), right.attributes(), out);
                 compareFields(left, right, out);
                 compareMethods(left, right, out);
-                return new ResourceMatch(out.level, rebuiltResource.location(), out.toString(), List.of());
+                return new ResourceMatch(rebuiltResource.location(), out.level, out.toString(), List.of());
             }
 
             private static void compareHeader(ClassModel left, ClassModel right, DiffBuilder out) {

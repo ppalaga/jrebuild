@@ -110,11 +110,11 @@ public record LocalRebuildService(
                             } catch (Exception e) {
                                 throw new BuildReportFailure(new BuildReport(
                                         buildRequest,
+                                        commitId,
+                                        Reproducibility.INVALID_SOURCE_INFO,
                                         ts,
                                         Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                                        Reproducibility.INVALID_SOURCE_INFO,
                                         Map.of(),
-                                        commitId,
                                         "Could not fetch from " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
                             }
 
@@ -150,20 +150,20 @@ public record LocalRebuildService(
                             } catch (AssertionError e) {
                                 throw new BuildReportFailure(new BuildReport(
                                         buildRequest,
+                                        commitId,
+                                        Reproducibility.UNBUILDABLE,
                                         ts,
                                         Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                                        Reproducibility.UNBUILDABLE,
                                         Map.of(),
-                                        commitId,
                                         "Could not build " + repo.uri() + "\n" + e.getMessage().trim()));
                             } catch (Throwable e) {
                                 throw new BuildReportFailure(new BuildReport(
                                         buildRequest,
+                                        commitId,
+                                        Reproducibility.UNBUILDABLE,
                                         ts,
                                         Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                                        Reproducibility.UNBUILDABLE,
                                         Map.of(),
-                                        commitId,
                                         "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
                             }
                             return commitId;
@@ -210,11 +210,11 @@ public record LocalRebuildService(
 
                                 return new BuildReport(
                                         buildRequest,
+                                        commitId,
+                                        reproducibility,
                                         ts,
                                         Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                                        reproducibility,
                                         builtArtifactsMap,
-                                        commitId,
                                         null);
 
                             });
@@ -238,11 +238,11 @@ public record LocalRebuildService(
             final ScmRepository repo, String message) {
         return new BuildReport(
                 buildRequest,
+                null,
+                Reproducibility.FAILED,
                 ts,
                 Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
-                Reproducibility.FAILED,
                 Map.of(),
-                null,
                 message);
     }
 

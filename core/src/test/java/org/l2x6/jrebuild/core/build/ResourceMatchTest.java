@@ -9,15 +9,15 @@ public class ResourceMatchTest {
     @Test
     void toStringNoMessagesNoChildren() {
         ResourceMatch match = new ResourceMatch(
-                ResourceMatchLevel.PERFECT, "some/path.jar", null, List.of());
+                "some/path.jar", ResourceMatchLevel.PERFECT, null, List.of());
         Assertions.assertThat(match.toString()).isEqualTo("PERFECT: some/path.jar");
     }
 
     @Test
     void toStringMessagesNoChildren() {
         ResourceMatch match = new ResourceMatch(
-                ResourceMatchLevel.BUILDABLE,
                 "target/b.txt",
+                ResourceMatchLevel.BUILDABLE,
                 """
                         --- target/a.txt
                         +++ target/b.txt
@@ -39,13 +39,13 @@ public class ResourceMatchTest {
     @Test
     void toStringMessagesAndTwoLevelsOfChildren() {
         ResourceMatch match = new ResourceMatch(
-                ResourceMatchLevel.BUILDABLE,
                 "app.war",
+                ResourceMatchLevel.BUILDABLE,
                 "top-level note",
                 List.of(
                         new ResourceMatch(
-                                ResourceMatchLevel.BUILDABLE,
                                 "WEB-INF/config.txt",
+                                ResourceMatchLevel.BUILDABLE,
                                 """
                                         --- a/config.txt
                                         +++ b/config.txt
@@ -55,13 +55,13 @@ public class ResourceMatchTest {
                                         """,
                                 List.of()),
                         new ResourceMatch(
-                                ResourceMatchLevel.BUILDABLE,
                                 "WEB-INF/lib/lib.jar",
+                                ResourceMatchLevel.BUILDABLE,
                                 null,
                                 List.of(
                                         new ResourceMatch(
-                                                ResourceMatchLevel.SUFFICIENT,
                                                 "greeting.txt",
+                                                ResourceMatchLevel.SUFFICIENT,
                                                 """
                                                         --- a/greeting.txt
                                                         +++ b/greeting.txt

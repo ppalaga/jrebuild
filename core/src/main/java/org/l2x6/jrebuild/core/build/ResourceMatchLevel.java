@@ -55,7 +55,7 @@ public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
     }
 
     public ResourceMatch match(String path) {
-        return new ResourceMatch(this, path, null, List.of());
+        return new ResourceMatch(path, this, null, List.of());
     }
 
     public ResourceMatchLevel lower(ResourceMatchLevel other) {

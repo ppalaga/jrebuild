@@ -2,7 +2,6 @@ package org.l2x6.jrebuild.core.build.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -85,15 +84,13 @@ public interface BuildReportStorage {
 
         private static final ObjectMapper MAPPER = JsonMapper.builder(new YAMLFactory()
                 .disable(SPLIT_LINES)
-                .disable(MINIMIZE_QUOTES)
                 .enable(INDENT_ARRAYS_WITH_INDICATOR)
-                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-                .enable(YAMLGenerator.Feature.LITERAL_BLOCK_STYLE))
+                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-                .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                //.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
                 .addModule(new JavaTimeModule())
-                .build().setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
+                .build().setDefaultPropertyInclusion(JsonInclude.Include.NON_DEFAULT);
 
         @SuppressWarnings("unused")
         @Override

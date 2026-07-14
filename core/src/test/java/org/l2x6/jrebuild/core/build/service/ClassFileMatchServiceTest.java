@@ -39,8 +39,8 @@ public class ClassFileMatchServiceTest {
                 testPath(ClassPerson1.class),
                 testPath(ClassPerson2.class),
                 new ResourceMatch(
-                        ResourceMatchLevel.BUILDABLE,
                         "target/test-classes/org/l2x6/jrebuild/core/build/service/samples/ClassPerson2.class",
+                        ResourceMatchLevel.BUILDABLE,
                         """
                                 flags: public super -> final public super
                                 name: org.l2x6.jrebuild.core.build.service.samples.ClassPerson1 -> org.l2x6.jrebuild.core.build.service.samples.ClassPerson2
