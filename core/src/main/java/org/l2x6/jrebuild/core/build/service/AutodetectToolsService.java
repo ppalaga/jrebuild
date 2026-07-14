@@ -21,6 +21,8 @@ public record AutodetectToolsService(ReferenceMavenRepository referenceMavenRepo
         // check for muti-release jars -> we should probably take the highest found major if there is no better hint
 
         // get the commit date and exclude all JDK versions that were published after that date
+
+        // find the build timeStamp in JavaDoc and set -Dproject.build.outputTimestamp=yyyy-MM-dd'T'HH:mm:ssXXX
         return null;
     }
 

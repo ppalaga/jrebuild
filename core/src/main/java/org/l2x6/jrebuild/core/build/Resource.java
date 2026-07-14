@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.l2x6.jrebuild.api.os.Eol;
 import org.l2x6.jrebuild.api.os.Os;
@@ -21,6 +22,11 @@ public interface Resource {
      * @return a string describing the location of the resource, a filesystem path or a similar identifier
      */
     String location();
+
+    /**
+     * @return a possibly cached lower case (with {@code ROOT} locale) variant of {@link #location()}
+     */
+    String lowerCaseLocation();
 
     boolean isMissing();
 
@@ -70,6 +76,7 @@ public interface Resource {
 
         private final Path file;
         private final String location;
+        private String lowerCaseLocation;
 
         public FileResource(Path file, String location) {
             super();
@@ -123,6 +130,15 @@ public interface Resource {
             return Files.newBufferedReader(file, StandardCharsets.UTF_8);
         }
 
+        @Override
+        public String lowerCaseLocation() {
+            String lcLoc = lowerCaseLocation;
+            if (lcLoc == null) {
+                lcLoc = lowerCaseLocation = location.toLowerCase(Locale.ROOT);
+            }
+            return lowerCaseLocation;
+        }
+
     }
 
     public class ByteArrayResource implements Resource {
@@ -135,16 +151,26 @@ public interface Resource {
         private final byte[] bytes;
         private volatile String string;
         private final Object stringLock = new Object();
-        private final String path;
+        private final String location;
+        private String lowerCaseLocation;
 
         ByteArrayResource(String path, byte[] bytes) {
             super();
-            this.path = path;
+            this.location = path;
             this.bytes = bytes;
         }
 
         public String location() {
-            return path;
+            return location;
+        }
+
+        @Override
+        public String lowerCaseLocation() {
+            String lcLoc = lowerCaseLocation;
+            if (lcLoc == null) {
+                lcLoc = lowerCaseLocation = location.toLowerCase(Locale.ROOT);
+            }
+            return lowerCaseLocation;
         }
 
         public byte[] bytes() {
@@ -176,7 +202,7 @@ public interface Resource {
                             .setByteArray(bytes)
                             .get();
                 } catch (IOException e) {
-                    throw new UncheckedIOException("Could not read " + path, e);
+                    throw new UncheckedIOException("Could not read " + location, e);
                 }
             }
             return null;
@@ -192,8 +218,12 @@ public interface Resource {
         return new FileResource(gavtcf.getFile(), gavtcf.toGavtc().getRepositoryPath());
     }
 
-    public static Resource of(String path, byte[] byteArray) {
-        return new ByteArrayResource(path, byteArray);
+    public static Resource of(String path, byte[] bytes) {
+        return new ByteArrayResource(path, bytes);
+    }
+
+    public static Resource of(String path, String content) {
+        return new ByteArrayResource(path, content.getBytes(StandardCharsets.UTF_8));
     }
 
     public record Line(String line, Eol eol) {

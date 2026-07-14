@@ -22,7 +22,7 @@ public class LocalRebuildServiceTest {
             FindReferenceArtifactsService findService = testEnv.getFindReferenceArtifactsService();
 
             List<Tool> tools = List.of(new Tool("sdkman", "java", "11.0.25-tem"));
-            String script = "./mvnw clean deploy -Prelease -DskipTests -Dgpg.skip -DskipPublishing=true deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}";
+            String script = "./mvnw clean deploy -Prelease -ntp -DskipTests -Dgpg.skip -DskipPublishing=true deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}";
 
             BuildReport report = findService.findPublishedArtifacts(
                     new FqScmRef(

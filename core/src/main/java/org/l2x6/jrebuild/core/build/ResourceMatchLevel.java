@@ -23,6 +23,7 @@ public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
      * <ul>
      * <li>some specific entries in meta-inf/Manifest.mf, such as date, builder JVM, etc.
      * <li>end of line characters
+     * <li>For html files in JavaDoc, the timestamps may be different
      * </ul>
      */
     SUFFICIENT(Reproducibility.SUFFICIENT),
