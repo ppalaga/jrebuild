@@ -20,4 +20,8 @@ public record OsArch(Os os, Arch arch) {
         return os + "@" + arch;
     }
 
+    public boolean equals(Os os, Arch arch) {
+        return this.os.equals(os) && this.arch.equals(arch);
+    }
+
 }

@@ -30,7 +30,9 @@ public class LocalRebuildServiceTest {
                             new ScmRepository("?", "git", "https://github.com/l2x6/pom-tuner.git")),
                     SourceRootDirectories.root())
                     .chain(bg -> {
-                        BuildRequest buildRequest = new BuildRequest(bg, OsArch.current(), OsArch.current().os().defaultShell(),
+                        OsArch currentOsArch = OsArch.current();
+                        BuildRequest buildRequest = new BuildRequest(bg, currentOsArch.os(), currentOsArch.arch(),
+                                currentOsArch.os().defaultShell(),
                                 tools, script);
                         LocalRebuildService rebuildService = testEnv.getLocalRebuildService();
                         return rebuildService.ensureBuilt(buildRequest, Reproducibility.PERFECT);
