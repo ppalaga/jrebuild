@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.KeyDeserializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
@@ -45,6 +46,8 @@ public class Serializers {
     }
 
     public static class GavtcSerializer extends StdSerializer<Gavtc> {
+        private static final long serialVersionUID = 1L;
+
         GavtcSerializer() {
             super(Gavtc.class);
         }
@@ -60,6 +63,8 @@ public class Serializers {
     }
 
     public static class GavtcDeserializer extends StdDeserializer<Gavtc> {
+        private static final long serialVersionUID = 1L;
+
         GavtcDeserializer() {
             super(Gavtc.class);
         }
@@ -74,4 +79,27 @@ public class Serializers {
         }
 
     }
+
+    public static class GavtcKeySerializer extends StdSerializer<Gavtc> {
+        private static final long serialVersionUID = 1L;
+
+        GavtcKeySerializer() {
+            super(Gavtc.class);
+        }
+
+        @Override
+        public void serialize(Gavtc value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeFieldName(value.toString());
+        }
+    }
+
+    public static class GavtcKeyDeserializer extends KeyDeserializer {
+
+        @Override
+        public Object deserializeKey(String key, DeserializationContext ctxt) throws IOException {
+            return Gavtc.of(key);
+        }
+
+    }
+
 }

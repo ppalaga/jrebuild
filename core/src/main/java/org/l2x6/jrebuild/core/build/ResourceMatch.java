@@ -15,7 +15,7 @@ public record ResourceMatch(String path,
             ResourceMatchLevel level,
             String diff,
             List<ResourceMatch> children) {
-        this.children = Objects.requireNonNull(children, "children");
+        this.children = children != null ? children : List.of();
         this.diff = diff != null && diff.isEmpty() ? null : diff;
         this.level = Objects.requireNonNull(level, "level");
         this.path = Objects.requireNonNull(path, "path");

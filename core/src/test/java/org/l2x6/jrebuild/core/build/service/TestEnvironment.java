@@ -262,7 +262,7 @@ public class TestEnvironment implements AutoCloseable {
         return localRebuildService;
     }
 
-    private BuildReportStorage getBuildReportStorage() {
+    public BuildReportStorage getBuildReportStorage() {
         if (buildReportStorage == null) {
             buildReportStorage = BuildReportStorage.local(vertx.fileSystem(), buildReportsDir);
         }

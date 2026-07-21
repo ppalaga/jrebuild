@@ -4,7 +4,9 @@
  */
 package org.l2x6.jrebuild.core.build;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.ArrayList;
@@ -46,6 +48,14 @@ public record BuildGroup(
     public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
         this(Objects.requireNonNull(scmRef), JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts)),
                 31 * scmRef.hashCode() + artifacts.hashCode());
+    }
+
+    @JsonCreator
+    static BuildGroup fromJson(
+            @JsonProperty("scmRef") FqScmRef scmRef,
+            @JsonProperty("artifacts") Set<Gavtc> artifacts) {
+        Set<Gavtc> immutable = Set.copyOf(artifacts);
+        return new BuildGroup(scmRef, immutable, 31 * scmRef.hashCode() + immutable.hashCode());
     }
 
     public static Builder builder(FqScmRef scmRef) {

@@ -6,7 +6,7 @@ import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.mutiny.core.Vertx;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -53,7 +53,7 @@ public record LocalRebuildService(
     }
 
     Uni<BuildReport> ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility, Clock clock) {
-        return buildReportStorage.list(buildRequest.buildGroup())
+        return buildReportStorage.list(buildRequest.buildGroup().scmRef())
                 .select().where(report -> report.reproducibility().isBetterOrSame(requiredReproducibility)
                         && report.containsAll(buildRequest.buildGroup().artifacts()))
                 .collect()
@@ -82,7 +82,7 @@ public record LocalRebuildService(
 
     static Uni<BuildReport> build(Vertx vertx, CloneDirectory cloneDir, BuildRequest buildRequest, LocalToolService tools,
             ResourceMatchService matchService, ReferenceMavenRepository referenceMavenRepository, Clock clock) {
-        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")));
+        ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
         final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final ScmRepository repo = scmRef.repository();
         if (!"git".equals(repo.type())) {
@@ -113,7 +113,7 @@ public record LocalRebuildService(
                                         commitId,
                                         Reproducibility.INVALID_SOURCE_INFO,
                                         ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                         Map.of(),
                                         "Could not fetch from " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
                             }
@@ -153,7 +153,7 @@ public record LocalRebuildService(
                                         commitId,
                                         Reproducibility.UNBUILDABLE,
                                         ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                         Map.of(),
                                         "Could not build " + repo.uri() + "\n" + e.getMessage().trim()));
                             } catch (Throwable e) {
@@ -162,7 +162,7 @@ public record LocalRebuildService(
                                         commitId,
                                         Reproducibility.UNBUILDABLE,
                                         ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                         Map.of(),
                                         "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
                             }
@@ -213,7 +213,7 @@ public record LocalRebuildService(
                                         commitId,
                                         reproducibility,
                                         ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                         builtArtifactsMap,
                                         null);
 
@@ -241,7 +241,7 @@ public record LocalRebuildService(
                 null,
                 Reproducibility.FAILED,
                 ts,
-                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneId.of("UTC")))),
+                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                 Map.of(),
                 message);
     }

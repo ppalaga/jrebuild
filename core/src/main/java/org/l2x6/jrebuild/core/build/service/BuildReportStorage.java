@@ -23,11 +23,9 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.common.git.GitUtils;
-import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildReport;
 
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR;
-import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.MINIMIZE_QUOTES;
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.SPLIT_LINES;
 import static java.time.temporal.ChronoField.HOUR_OF_DAY;
 import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
@@ -37,20 +35,9 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 public interface BuildReportStorage {
     Uni<BuildReport> store(BuildReport buildReport);
 
-    Multi<BuildReport> list(BuildGroup buildGroup);
+    Multi<BuildReport> list(FqScmRef fqScmRef);
 
     /**
-     * Layout:
-     *
-     * <pre>{@code
-     * builds
-     * + org/group1/project/version/<tag>
-     * | + 2026-03-04T11-22-33 // attempt timestamp
-     * | | +- build-report.yaml
-     * | + 2026-03-05T22-33-44 // attempt timestamp
-     * | | +- build-report.yaml
-     * }</pre>
-     *
      */
     static BuildReportStorage local(FileSystem fileSystem, Path reportsDirectory) {
         return new FilesystemBuildReportStorage(fileSystem, reportsDirectory);
@@ -75,10 +62,9 @@ public interface BuildReportStorage {
         }
 
         @SuppressWarnings("unused")
-        Uni<Path> getOrCreateReportsDirectory(BuildGroup buildGroup) {
-            FqScmRef scmRef = buildGroup.scmRef();
-            Path result = reportsDirectory.resolve(GitUtils.uriToFileName(scmRef.repository().uri()))
-                    .resolve(scmRef.scmRef().name());
+        Uni<Path> getOrCreateReportsDirectory(FqScmRef fqScmRef) {
+            Path result = reportsDirectory.resolve(GitUtils.uriToFileName(fqScmRef.repository().uri()))
+                    .resolve(fqScmRef.scmRef().name());
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
         }
 
@@ -95,19 +81,15 @@ public interface BuildReportStorage {
         @SuppressWarnings("unused")
         @Override
         public Uni<BuildReport> store(BuildReport buildReport) {
-            return getOrCreateReportsDirectory(buildReport.buildRequest().buildGroup())
+            return getOrCreateReportsDirectory(buildReport.buildRequest().buildGroup().scmRef())
                     .onItem()
-                    .transformToUni(reportDir -> {
-                        Path buildRunReportDir = reportDir.resolve(format(buildReport.buildStart()));
-                        return fileSystem.mkdirs(buildRunReportDir.toString())
-                                .map(dirCreated -> buildRunReportDir);
-                    }).onItem()
-                    .transformToUni(buildRunReportDir -> Uni.createFrom().item(buildReport)
+                    .transformToUni(buildReportDir -> Uni.createFrom().item(buildReport)
                             .emitOn(Infrastructure.getDefaultWorkerPool())
                             .map(pojo -> {
                                 try {
                                     return new BytesAndFile(MAPPER.writeValueAsBytes(pojo),
-                                            buildRunReportDir.resolve("build-report.yaml"));
+                                            buildReportDir
+                                                    .resolve("build-report-" + format(buildReport.buildStart()) + ".yaml"));
                                 } catch (Exception e) {
                                     throw new RuntimeException("Could not serialize pojo " + pojo, e);
                                 }
@@ -119,14 +101,18 @@ public interface BuildReportStorage {
         }
 
         @Override
-        public Multi<BuildReport> list(BuildGroup buildGroup) {
-            return getOrCreateReportsDirectory(buildGroup)
+        public Multi<BuildReport> list(FqScmRef fqScmRef) {
+            return getOrCreateReportsDirectory(fqScmRef)
                     .onItem().transformToMulti(reportsDir -> {
                         return fileSystem.readDir(reportsDir.toString())
                                 .onItem().transformToMulti(files -> Multi.createFrom().iterable(files))
-
-                                .map(file -> reportsDir.resolve(file).resolve("build-report.yaml"))
-                                .select().when(buildReportFile -> fileSystem.exists(buildReportFile.toString()))
+                                .select()
+                                .where(buildReportFile -> {
+                                    Path path = Path.of(buildReportFile);
+                                    String fileName = path.getFileName().toString();
+                                    return fileName.startsWith("build-report-")
+                                            && fileName.endsWith(".yaml");
+                                })
                                 .onItem().transformToUniAndMerge(buildReportFile -> {
 
                                     Uni<BuildReport> r = fileSystem.readFile(buildReportFile.toString())
