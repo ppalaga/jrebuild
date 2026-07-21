@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.l2x6.jrebuild.core.jackson.Serializers;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -27,8 +26,7 @@ public record BuildReport(
         /** How long the build took */
         Duration buildDuration,
         @JsonSerialize(keyUsing = Serializers.GavtcKeySerializer.class) @JsonDeserialize(
-                keyUsing = Serializers.GavtcKeyDeserializer.class,
-                as = LinkedHashMap.class) Map<Gavtc, ResourceMatch> builtArtifacts,
+                using = Serializers.GavtcTreeMapDeserializer.class) Map<Gavtc, ResourceMatch> builtArtifacts,
         /** Can be {@code null} */
         String errorMessage) {
 

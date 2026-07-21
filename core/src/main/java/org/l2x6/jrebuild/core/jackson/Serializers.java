@@ -7,15 +7,22 @@ package org.l2x6.jrebuild.core.jackson;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.KeyDeserializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Collections;
+import java.util.Map;
+import java.util.TreeMap;
+import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Gavtc;
+import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
 public class Serializers {
     public static class GaSerializer extends StdSerializer<Ga> {
@@ -102,4 +109,29 @@ public class Serializers {
 
     }
 
+    public static class GavtcTreeMapDeserializer extends JsonDeserializer<Map<Gavtc, ResourceMatch>> {
+        @Override
+        public Map<Gavtc, ResourceMatch> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            TreeMap<Gavtc, ResourceMatch> map = new TreeMap<>(
+                    Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
+
+            if (!p.isExpectedStartObjectToken()) {
+                ctxt.reportWrongTokenException(this, JsonToken.START_OBJECT, "Expected start of object");
+            }
+
+            while (p.nextToken() != JsonToken.END_OBJECT) {
+                // current token is the field name (the raw string key)
+                String rawKey = p.currentName();
+                Gavtc key = Gavtc.of(rawKey);
+
+                // advance to the value token, then let Jackson deserialize it normally
+                p.nextToken();
+                ResourceMatch value = ctxt.readValue(p, ResourceMatch.class);
+
+                map.put(key, value);
+            }
+
+            return Collections.unmodifiableMap(map);
+        }
+    }
 }
