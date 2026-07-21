@@ -21,9 +21,16 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildReport;
+import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
+import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout.CloneDirectory;
 
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR;
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.SPLIT_LINES;
@@ -37,10 +44,113 @@ public interface BuildReportStorage {
 
     Multi<BuildReport> list(FqScmRef fqScmRef);
 
+    Uni<Void> close();
+
+    static BuildReportStorage git(
+            FileSystem fileSystem,
+            String gitUri,
+            String branch,
+            String authorName,
+            String authorEmail,
+            CredentialsProvider credentialsProvider,
+            int pushRetryCount,
+            CloneDirectoriesLayout cloneDirectoriesLayout) {
+        return new GitBuildReportStorage(fileSystem, gitUri, branch, authorName, authorEmail, credentialsProvider,
+                pushRetryCount, cloneDirectoriesLayout);
+    }
+
     /**
      */
     static BuildReportStorage local(FileSystem fileSystem, Path reportsDirectory) {
         return new FilesystemBuildReportStorage(fileSystem, reportsDirectory);
+    }
+
+    static class GitBuildReportStorage implements BuildReportStorage {
+        private final Uni<GitFsStorage> delegate;
+        private final String authorName;
+        private final String authorEmail;
+        private final int pushRetryCount;
+        private final CredentialsProvider credentialsProvider;
+        private FqScmRef remote;
+
+        GitBuildReportStorage(
+                FileSystem fileSystem,
+                String gitUri,
+                String branch,
+                String authorName,
+                String authorEmail,
+                CredentialsProvider credentialsProvider,
+                int pushRetryCount,
+                CloneDirectoriesLayout cloneDirectoriesLayout) {
+            this.authorName = authorName;
+            this.authorEmail = authorEmail;
+            this.pushRetryCount = pushRetryCount;
+            this.credentialsProvider = credentialsProvider;
+            this.remote = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new ScmRepository("?", "git", gitUri));
+            this.delegate = cloneDirectoriesLayout
+                    .lockDirectory(gitUri)
+                    .chain(cloneDirectory -> GitUtils
+                            .cloneOrFetchAndResetAsync(remote, cloneDirectory.cloneDirectory(), -1)
+                            .map(git -> new GitFsStorage(
+                                    cloneDirectory,
+                                    git,
+                                    new FilesystemBuildReportStorage(
+                                            fileSystem,
+                                            cloneDirectory.cloneDirectory()))))
+                    .memoize().indefinitely();
+        }
+
+        @Override
+        public Uni<BuildReport> store(BuildReport buildReport) {
+            FqScmRef scmRef = buildReport.buildRequest().buildGroup().scmRef();
+            final String message = buildReport.reproducibility() + ": " + scmRef.repository().uri() + "#"
+                    + scmRef.scmRef().name();
+            return delegate
+                    .chain(gitFsStorage -> gitFsStorage.fsStorage
+                            .store(buildReport)
+                            .chain(report -> Uni.createFrom()
+                                    .item(() -> {
+                                        GitUtils.commit(gitFsStorage.git, message, authorName, authorEmail);
+                                        GitUtils.push(gitFsStorage.git, remote.repository().uri(), credentialsProvider,
+                                                pushRetryCount);
+                                        return null;
+                                    })
+                                    .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
+                            .replaceWith(buildReport));
+        }
+
+        @Override
+        public Multi<BuildReport> list(FqScmRef fqScmRef) {
+            return delegate.chain(gitFsStorage -> Uni.createFrom()
+                    .item(() -> {
+                        GitUtils.assertSuccess(GitUtils.rebase(gitFsStorage.git, remote.repository().uri()));
+                        return gitFsStorage;
+                    })
+                    .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()))
+                    .onItem().transformToMulti(gitFsStorage -> gitFsStorage.fsStorage.list(fqScmRef));
+        }
+
+        @Override
+        public Uni<Void> close() {
+            return delegate.chain(GitFsStorage::close);
+        }
+
+        record GitFsStorage(CloneDirectory cloneDirectory, Git git, FilesystemBuildReportStorage fsStorage) {
+            public Uni<Void> close() {
+                return Uni.createFrom()
+                        .item(() -> {
+                            try {
+                                git.close();
+                            } finally {
+                                cloneDirectory.close();
+                            }
+                            return null;
+                        })
+                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                        .replaceWithVoid();
+            }
+        }
+
     }
 
     static record FilesystemBuildReportStorage(FileSystem fileSystem, Path reportsDirectory) implements BuildReportStorage {
@@ -74,7 +184,7 @@ public interface BuildReportStorage {
                 .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-                //.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                // .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
                 .addModule(new JavaTimeModule())
                 .build().setDefaultPropertyInclusion(JsonInclude.Include.NON_DEFAULT);
 
@@ -83,7 +193,8 @@ public interface BuildReportStorage {
         public Uni<BuildReport> store(BuildReport buildReport) {
             return getOrCreateReportsDirectory(buildReport.buildRequest().buildGroup().scmRef())
                     .onItem()
-                    .transformToUni(buildReportDir -> Uni.createFrom().item(buildReport)
+                    .transformToUni(buildReportDir -> Uni.createFrom()
+                            .item(buildReport)
                             .emitOn(Infrastructure.getDefaultWorkerPool())
                             .map(pojo -> {
                                 try {
@@ -136,6 +247,11 @@ public interface BuildReportStorage {
 
         static record BytesAndFile(byte[] bytes, Path file) {
 
+        }
+
+        @Override
+        public Uni<Void> close() {
+            return Uni.createFrom().voidItem();
         }
 
     }

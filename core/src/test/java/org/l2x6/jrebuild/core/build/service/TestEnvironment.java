@@ -20,6 +20,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
+import org.l2x6.jrebuild.core.maven.DeployDirectoriesLayout;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -44,12 +45,14 @@ public class TestEnvironment implements AutoCloseable {
     private ReferenceMavenRepository referenceMavenRepository;
     private FindReferenceArtifactsService findReferenceArtifactsService;
     private final Path clonesDir;
+    private final Path deployDir;
     private CloneDirectoriesLayout cloneDirectoriesLayout;
     private LocalRebuildService localRebuildService;
     private LocalToolService localToolService;
     private ResourceMatchService resourceMatchService;
     private final Path buildReportsDir;
     private BuildReportStorage buildReportStorage;
+    private DeployDirectoriesLayout deployDirectoriesLayout;
 
     public TestEnvironment(Class<?> testClass, RemoteRepository remoteRepository) {
         String testName = testClass.getSimpleName();
@@ -59,6 +62,7 @@ public class TestEnvironment implements AutoCloseable {
                 .normalize();
         remoteRepoDir = createDir(testRunDir, "remote");
         clonesDir = createDir(testRunDir, "clones");
+        deployDir = createDir(testRunDir, "deploy");
         localMavenRepo = createDir(testRunDir, "m2");
         localRefRepo = createDir(testRunDir, "ref");
         toolsDir = createDir(testRunDir, "tools");
@@ -220,6 +224,13 @@ public class TestEnvironment implements AutoCloseable {
         return cloneDirectoriesLayout;
     }
 
+    public DeployDirectoriesLayout getDeployDirectoriesLayout() {
+        if (deployDirectoriesLayout == null) {
+            deployDirectoriesLayout = new DeployDirectoriesLayout(deployDir, vertx);
+        }
+        return deployDirectoriesLayout;
+    }
+
     public void hideRemote(String relPath) {
         Path src = remoteRepoDir.resolve(relPath);
         Path dest = remoteRepoDir.resolve(relPath + ".hidden");
@@ -254,6 +265,7 @@ public class TestEnvironment implements AutoCloseable {
             localRebuildService = new LocalRebuildService(
                     vertx,
                     getCloneDirectoriesLayout(),
+                    getDeployDirectoriesLayout(),
                     getLocalToolService(),
                     getReferenceMavenRepository(),
                     getResourceMatchService(),

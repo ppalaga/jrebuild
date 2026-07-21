@@ -32,6 +32,8 @@ import org.l2x6.jrebuild.core.build.Reproducibility;
 import org.l2x6.jrebuild.core.build.Resource;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
+import org.l2x6.jrebuild.core.maven.DeployDirectoriesLayout;
+import org.l2x6.jrebuild.core.maven.DeployDirectoriesLayout.DeployDirectory;
 import org.l2x6.jrebuild.core.maven.LocalMavenRepository;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
@@ -43,6 +45,7 @@ import org.l2x6.pom.tuner.model.OptionalWithDefault;
 public record LocalRebuildService(
         Vertx vertx,
         CloneDirectoriesLayout cloneDirectoriesLayout,
+        DeployDirectoriesLayout deployDirectoriesLayout,
         LocalToolService tools,
         ReferenceMavenRepository referenceMavenRepository,
         ResourceMatchService matchService,
@@ -66,22 +69,33 @@ public record LocalRebuildService(
                     /* Create or find the build directory */
                     return cloneDirectoriesLayout.lockDirectory(buildRequest.buildGroup().scmRef().repository().uri())
                             .onItem()
-                            .transformToUni(cloneDir -> build(
-                                    vertx,
-                                    cloneDir,
-                                    buildRequest,
-                                    tools,
-                                    matchService,
-                                    referenceMavenRepository,
-                                    clock)
-                                    .onItem().transformToUni(buildReportStorage::store)
-                                    .eventually(cloneDir::close));
+                            .transformToUni(cloneDir -> deployDirectoriesLayout
+                                    .createDeployDirectory()
+                                    .chain(deployDirectory -> build(
+                                            vertx,
+                                            cloneDir,
+                                            deployDirectory,
+                                            buildRequest,
+                                            tools,
+                                            matchService,
+                                            referenceMavenRepository,
+                                            clock)
+                                            .onItem().transformToUni(buildReportStorage::store)
+                                            .eventually(cloneDir::close)
+                                            .eventually(deployDirectory::close)));
                 });
 
     }
 
-    static Uni<BuildReport> build(Vertx vertx, CloneDirectory cloneDir, BuildRequest buildRequest, LocalToolService tools,
-            ResourceMatchService matchService, ReferenceMavenRepository referenceMavenRepository, Clock clock) {
+    static Uni<BuildReport> build(
+            Vertx vertx,
+            CloneDirectory cloneDir,
+            DeployDirectory deployDirectory,
+            BuildRequest buildRequest,
+            LocalToolService tools,
+            ResourceMatchService matchService,
+            ReferenceMavenRepository referenceMavenRepository,
+            Clock clock) {
         ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
         final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final ScmRepository repo = scmRef.repository();
@@ -96,85 +110,84 @@ public record LocalRebuildService(
         }
 
         @SuppressWarnings("unused")
-        Uni<String> commitIdUni = vertx.fileSystem().mkdirs(cloneDir.deployDirectory().toString())
-                .onItem().transformToUni(deployDirCreated -> Uni.createFrom()
-                        .item(() -> {
-                            /* Checkout the sources */
-                            String commitId = null;
-                            try (Git git = GitUtils.cloneOrFetchAndReset(
-                                    scmRef,
-                                    cloneDir.cloneDirectory(),
-                                    1)) {
-                                final Ref ref = git.getRepository().exactRef("HEAD");
-                                commitId = ref.getObjectId().getName();
-                            } catch (Exception e) {
-                                throw new BuildReportFailure(new BuildReport(
-                                        buildRequest,
-                                        commitId,
-                                        Reproducibility.INVALID_SOURCE_INFO,
-                                        ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
-                                        Map.of(),
-                                        "Could not fetch from " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
-                            }
+        Uni<String> commitIdUni = Uni.createFrom()
+                .item(() -> {
+                    /* Checkout the sources */
+                    String commitId = null;
+                    try (Git git = GitUtils.cloneOrFetchAndReset(
+                            scmRef,
+                            deployDirectory.deployDirectory(),
+                            1)) {
+                        final Ref ref = git.getRepository().exactRef("HEAD");
+                        commitId = ref.getObjectId().getName();
+                    } catch (Exception e) {
+                        throw new BuildReportFailure(new BuildReport(
+                                buildRequest,
+                                commitId,
+                                Reproducibility.INVALID_SOURCE_INFO,
+                                ts,
+                                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
+                                Map.of(),
+                                "Could not fetch from " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
+                    }
 
-                            /* Install the tools and prepare the PATH env var */
-                            String colon = System.getProperty("path.separator");
-                            StringJoiner joiner = new StringJoiner(colon);
-                            Map<String, String> env = new LinkedHashMap<>();
-                            for (Tool tool : buildRequest.tools()) {
-                                // TODO: install the tools in parallel
-                                // TODO: even in parallel with git checkout
-                                InstalledTool installed = tools.install(tool);
-                                installed.preparePathEnvironmentVariable(joiner::add);
-                                installed.prepareEnvironmentVariables(env::put);
-                            }
-                            joiner.add(System.getenv("PATH"));
-                            final String pathEnvVar = joiner.toString();
+                    /* Install the tools and prepare the PATH env var */
+                    String colon = System.getProperty("path.separator");
+                    StringJoiner joiner = new StringJoiner(colon);
+                    Map<String, String> env = new LinkedHashMap<>();
+                    for (Tool tool : buildRequest.tools()) {
+                        // TODO: install the tools in parallel
+                        // TODO: even in parallel with git checkout
+                        InstalledTool installed = tools.install(tool);
+                        installed.preparePathEnvironmentVariable(joiner::add);
+                        installed.prepareEnvironmentVariables(env::put);
+                    }
+                    joiner.add(System.getenv("PATH"));
+                    final String pathEnvVar = joiner.toString();
 
-                            /* Run the script */
-                            List<String> cmd = buildRequest.shell().command(buildRequest.osArch(), buildRequest.buildScript());
-                            try {
-                                CliAssured.command(cmd.get(0))
-                                        .args(cmd.subList(1, cmd.size()))
-                                        .cd(cloneDir.cloneDirectory())
-                                        .env("PATH", pathEnvVar)
-                                        .env("DEPLOYMENT_REPO", cloneDir.deployDirectory().toUri().toString())
-                                        .env(env)
-                                        .stderrToStdout()
-                                        .then()
-                                        .stdout()
-                                        .log()
-                                        .execute()
-                                        .assertSuccess();
-                            } catch (AssertionError e) {
-                                throw new BuildReportFailure(new BuildReport(
-                                        buildRequest,
-                                        commitId,
-                                        Reproducibility.UNBUILDABLE,
-                                        ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
-                                        Map.of(),
-                                        "Could not build " + repo.uri() + "\n" + e.getMessage().trim()));
-                            } catch (Throwable e) {
-                                throw new BuildReportFailure(new BuildReport(
-                                        buildRequest,
-                                        commitId,
-                                        Reproducibility.UNBUILDABLE,
-                                        ts,
-                                        Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
-                                        Map.of(),
-                                        "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
-                            }
-                            return commitId;
-                        })
-                        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool()));
+                    /* Run the script */
+                    List<String> cmd = buildRequest.shell().command(buildRequest.osArch(), buildRequest.buildScript());
+                    try {
+                        CliAssured.command(cmd.get(0))
+                                .args(cmd.subList(1, cmd.size()))
+                                .cd(deployDirectory.deployDirectory())
+                                .env("PATH", pathEnvVar)
+                                .env("DEPLOYMENT_REPO", deployDirectory.deployDirectory().toUri().toString())
+                                .env(env)
+                                .stderrToStdout()
+                                .then()
+                                .stdout()
+                                .log()
+                                .execute()
+                                .assertSuccess();
+                    } catch (AssertionError e) {
+                        throw new BuildReportFailure(new BuildReport(
+                                buildRequest,
+                                commitId,
+                                Reproducibility.UNBUILDABLE,
+                                ts,
+                                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
+                                Map.of(),
+                                "Could not build " + repo.uri() + "\n" + e.getMessage().trim()));
+                    } catch (Throwable e) {
+                        throw new BuildReportFailure(new BuildReport(
+                                buildRequest,
+                                commitId,
+                                Reproducibility.UNBUILDABLE,
+                                ts,
+                                Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
+                                Map.of(),
+                                "Could not build " + repo.uri() + "\n" + CommonUtils.stackTrace(e)));
+                    }
+                    return commitId;
+                })
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
 
         Uni<BuildReport> buildReport = commitIdUni.onItem()
                 .transformToUni(commitId -> {
 
                     /* Check if everything was deployed, report missing artifacts if needed */
-                    final Multi<Gavtcf> rebuiltArtifacts = new LocalMavenRepository(cloneDir.deployDirectory(),
+                    final Multi<Gavtcf> rebuiltArtifacts = new LocalMavenRepository(deployDirectory.deployDirectory(),
                             vertx.fileSystem())
                             .gavtcfStream();
 

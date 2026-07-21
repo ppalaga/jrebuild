@@ -51,7 +51,7 @@ public record ScmRepository(
         this.source = Objects.requireNonNull(source, "source");
         this.type = Objects.requireNonNull(type, "type");
         Objects.requireNonNull(uri, "uri");
-        if (uri.endsWith("/")) {
+        if (!uri.startsWith("file://") && uri.endsWith("/")) {
             throw new IllegalArgumentException("URI must not end with /; found '" + uri + "'");
         }
         this.uri = uri;

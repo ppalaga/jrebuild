@@ -16,12 +16,21 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.RebaseResult;
 import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.transport.RemoteRefUpdate.Status;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
@@ -37,6 +46,12 @@ public class GitUtils {
 
     private static final int CREATE_RETRY_COUNT = 256;
 
+    /**
+     * @param  fqScmRef
+     * @param  directory
+     * @param  depth     values lower or equal to {@code 0} mean unbounded depth
+     * @return
+     */
     public static Git cloneOrFetchAndReset(
             FqScmRef fqScmRef,
             Path directory,
@@ -53,11 +68,15 @@ public class GitUtils {
             /* Shallow clone */
             log.infof("Cloning %s to %s", fqScmRef.repository().uri(), directory);
             try {
-                git = Git.cloneRepository()
+                CloneCommand cloneCommand = Git.cloneRepository()
                         .setBranch(fqScmRef.scmRef().name())
                         .setDirectory(directory.toFile())
-                        //.setCredentialsProvider(new GitCredentials())
-                        .setDepth(depth)
+                // .setCredentialsProvider(new GitCredentials())
+                ;
+                if (depth > 0) {
+                    cloneCommand.setDepth(depth);
+                }
+                git = cloneCommand
                         .setURI(fqScmRef.repository().uri())
                         .call();
             } catch (GitAPIException e) {
@@ -275,5 +294,104 @@ public class GitUtils {
                 .replaceAll("[-.]+$", "")
                 .replaceAll("\\.git$", "")
                 .replaceAll("[-.]+$", "");
+    }
+
+    public static Uni<RevCommit> commitAsync(Git git, String message, String authorName, String authorEmail)
+            throws NoFilepatternException, GitAPIException {
+        return Uni.createFrom().item(() -> commit(git, message, authorName, authorEmail))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    public static RevCommit commit(Git git, String message, String authorName, String authorEmail) {
+        try {
+            git.add()
+                    .setAll(true)
+                    .call();
+
+            return git.commit()
+                    .setMessage(message)
+                    .setAuthor(authorName, authorEmail)
+                    .call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException("Could not commit", e);
+        }
+    }
+
+    public static void push(Git git, String remoteUri, CredentialsProvider credentialsProvider, int retryCount) {
+
+        try {
+            String branch = git.getRepository().getBranch();
+            int i = 0;
+            for (; i < retryCount; i++) {
+                String refSpec = "refs/heads/" + branch;
+                Iterable<PushResult> results = git.push()
+                        .setRemote(remoteUri)
+                        .add(refSpec)
+                        .setCredentialsProvider(credentialsProvider)
+                        .call();
+
+                if (pushSuccessful(results)) {
+                    return;
+                }
+                if (i + 1 >= retryCount) {
+                    throw new IllegalStateException("Retry count " + retryCount + " exceeded");
+                }
+
+                assertSuccess(rebase(git, remoteUri));
+
+                /* ... and try again */
+            }
+            if (i >= retryCount) {
+                throw new IllegalStateException("Retry count " + retryCount + " exceeded");
+            }
+        } catch (IOException | GitAPIException e) {
+            throw new RuntimeException("Could not push, fetch or rebase", e);
+        }
+    }
+
+    public static void assertSuccess(RebaseResult rebase) {
+        switch (rebase.getStatus()) {
+        case RebaseResult.Status.OK:
+        case RebaseResult.Status.UP_TO_DATE:
+        case RebaseResult.Status.FAST_FORWARD:
+            return;
+        default:
+            throw new IllegalStateException("Unexpected RebaseResult status: " + rebase.getStatus());
+        }
+
+    }
+
+    public static RebaseResult rebase(Git git, String remoteUri) {
+
+        try {
+            String branch = git.getRepository().getBranch();
+            String refSpec = "refs/heads/" + branch;
+            final FetchResult fetchResult = git.fetch().setRemote(remoteUri).setRefSpecs(refSpec).call();
+            final ObjectId remoteHead = fetchResult.getAdvertisedRef(refSpec).getObjectId();
+            return git.rebase()
+                    .setUpstream(remoteHead)
+                    .call();
+        } catch (IOException | GitAPIException e) {
+            throw new IllegalStateException("Could not rebase from " + remoteUri, e);
+        }
+    }
+
+    static boolean pushSuccessful(Iterable<PushResult> results) {
+        for (PushResult result : results) {
+            for (RemoteRefUpdate update : result.getRemoteUpdates()) {
+                switch (update.getStatus()) {
+                case RemoteRefUpdate.Status.OK:
+                case RemoteRefUpdate.Status.UP_TO_DATE:
+                    continue; // All ref updates must be OK or UP_TO_DATE
+                case RemoteRefUpdate.Status.REJECTED_REMOTE_CHANGED:
+                case RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD:
+                    // We will try to rebase
+                    return false;
+                default:
+                    throw new IllegalArgumentException("Unexpected RemoteRefUpdate: " + update + " for " + result);
+                }
+            }
+        }
+        return true;
     }
 }

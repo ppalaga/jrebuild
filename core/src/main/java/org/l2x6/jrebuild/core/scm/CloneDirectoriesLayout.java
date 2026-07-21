@@ -88,11 +88,7 @@ public class CloneDirectoriesLayout {
         }
 
         public Path cloneDirectory() {
-            return lockedDirectory.resolve("clone");
-        }
-
-        public Path deployDirectory() {
-            return lockedDirectory.resolve("deploy");
+            return lockedDirectory;
         }
 
         @Override
