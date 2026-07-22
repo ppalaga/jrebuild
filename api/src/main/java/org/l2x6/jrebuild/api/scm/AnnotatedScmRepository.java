@@ -5,20 +5,17 @@
 package org.l2x6.jrebuild.api.scm;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
-import org.eclipse.jgit.transport.URIish;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.pom.tuner.model.Gav;
 
 public record AnnotatedScmRepository(
         String source,
-        String type,
-        String uri) implements Comparable<AnnotatedScmRepository> {
+        ScmRepository repository) implements Comparable<AnnotatedScmRepository> {
     public static String UNKNOWN = "unknown";
     public static String FAILED = "failed";
     private static final Comparator<AnnotatedScmRepository> COMPARATOR = Comparator.comparing(AnnotatedScmRepository::uri)
@@ -48,33 +45,27 @@ public record AnnotatedScmRepository(
             String source,
             String type,
             String uri) {
-        this.source = Objects.requireNonNull(source, "source");
-        this.type = Objects.requireNonNull(type, "type");
-        Objects.requireNonNull(uri, "uri");
-        if (!uri.startsWith("file://") && uri.endsWith("/")) {
-            throw new IllegalArgumentException("URI must not end with /; found '" + uri + "'");
-        }
-        this.uri = uri;
+        this(Objects.requireNonNull(source, "source"), new ScmRepository(type, uri));
     }
 
     @JsonIgnore
     public boolean isUnknown() {
-        return UNKNOWN.equals(type);
+        return ScmRepositoryType.unknown == repository.type();
     }
 
     @JsonIgnore
     public boolean isFailed() {
-        return FAILED.equals(type);
+        return ScmRepositoryType.failed == repository.type();
     }
 
     @JsonIgnore
     public boolean isKnown() {
-        return !UNKNOWN.equals(type);
+        return ScmRepositoryType.unknown != repository.type();
     }
 
     @Override
     public String toString() {
-        return source + " " + type + ":" + uri;
+        return source + " " + repository.toString();
     }
 
     @Override
@@ -84,33 +75,24 @@ public record AnnotatedScmRepository(
 
     @JsonIgnore
     public boolean isUnknownOrFailed() {
-        return UNKNOWN.equals(type) || FAILED.equals(type);
+        ScmRepositoryType type = repository.type();
+        return ScmRepositoryType.unknown == type || ScmRepositoryType.failed == repository.type();
     }
 
     public Optional<String> lastPathSegment() {
-        if (uri == null) {
-            return Optional.empty();
-        }
-        if ("git".equals(type)) {
-            try {
-                URIish urish = new URIish(uri);
-                String p = urish.getPath();
-                if (p != null) {
-                    if (p.endsWith(".git")) {
-                        p = p.substring(0, p.length() - 4);
-                    }
-                    int slashPos = p.lastIndexOf('/');
-                    return Optional.of(slashPos >= 0 ? p.substring(slashPos + 1) : p);
-                }
-            } catch (URISyntaxException ignored) {
-            }
-        }
-        final String p = URI.create(uri).getPath();
-        if (p != null) {
-            int slashPos = p.lastIndexOf('/');
-            return Optional.of(slashPos >= 0 ? p.substring(slashPos + 1) : p);
-        }
-        return Optional.empty();
+        return repository.lastPathSegment();
+    }
+
+    public String uri() {
+        return repository.uri();
+    }
+
+    public ScmRepositoryType type() {
+        return repository.type();
+    }
+
+    public boolean isGit() {
+        return repository.isGit();
     }
 
 }

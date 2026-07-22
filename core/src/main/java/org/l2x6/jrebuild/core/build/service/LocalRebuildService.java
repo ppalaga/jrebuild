@@ -99,7 +99,7 @@ public record LocalRebuildService(
         ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
         final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final AnnotatedScmRepository repo = scmRef.repository();
-        if (!"git".equals(repo.type())) {
+        if (!repo.isGit()) {
             return Uni.createFrom()
                     .item(buildReportFailure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
         }

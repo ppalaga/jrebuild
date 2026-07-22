@@ -56,7 +56,7 @@ public class GitUtils {
             FqScmRef fqScmRef,
             Path directory,
             int depth) {
-        if (!fqScmRef.repository().type().equals("git")) {
+        if (!fqScmRef.repository().isGit()) {
             throw new IllegalArgumentException("Can handle only git repositories; found " + fqScmRef);
         }
         final Git git;
