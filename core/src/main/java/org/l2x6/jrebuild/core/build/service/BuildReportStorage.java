@@ -23,10 +23,10 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.CredentialsProvider;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildReport;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
@@ -86,7 +86,7 @@ public interface BuildReportStorage {
             this.authorEmail = authorEmail;
             this.pushRetryCount = pushRetryCount;
             this.credentialsProvider = credentialsProvider;
-            this.remote = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new ScmRepository("?", "git", gitUri));
+            this.remote = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new AnnotatedScmRepository("?", "git", gitUri));
             this.delegate = cloneDirectoriesLayout
                     .lockDirectory(gitUri)
                     .chain(cloneDirectory -> GitUtils

@@ -9,13 +9,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.pom.tuner.model.Gav;
 
 public abstract class AbstractScmLocator implements ScmLocator {
@@ -24,7 +24,7 @@ public abstract class AbstractScmLocator implements ScmLocator {
     private static final String HTTPS_GITHUB_COM = "https://github.com/";
     private static final String SSH_GITHUB_COM = "ssh://git@github.com/";
 
-    static final List<BiFunction<ScmRepository, Gav, String>> VERSION_TO_TAG_FORMATTERS = List.of(
+    static final List<BiFunction<AnnotatedScmRepository, Gav, String>> VERSION_TO_TAG_FORMATTERS = List.of(
             (repo, gav) -> gav.getVersion(),
             (repo, gav) -> gav.getArtifactId() + "-" + gav.getVersion(),
             // seen in https://github.com/jvm-build-service-code/wsdl4j
@@ -59,8 +59,8 @@ public abstract class AbstractScmLocator implements ScmLocator {
         this.scmLookup = scmLookup;
     }
 
-    protected static ScmRef guessTag(ScmRepository repository, Gav gav, Map<String, String> tags) {
-        for (BiFunction<ScmRepository, Gav, String> formatter : VERSION_TO_TAG_FORMATTERS) {
+    protected static ScmRef guessTag(AnnotatedScmRepository repository, Gav gav, Map<String, String> tags) {
+        for (BiFunction<AnnotatedScmRepository, Gav, String> formatter : VERSION_TO_TAG_FORMATTERS) {
             final String tag = formatter.apply(repository, gav);
             if (tag != null) {
                 String revision = tags.get(tag);
@@ -72,7 +72,7 @@ public abstract class AbstractScmLocator implements ScmLocator {
         return null;
     }
 
-    protected FqScmRef validateTag(ScmRepository url, String tag, String version) {
+    protected FqScmRef validateTag(AnnotatedScmRepository url, String tag, String version) {
         final Kind kind = Kind.TAG;
         final Result<String, String> rev = scmLookup.getRevision(url, kind, tag);
         return rev.reduce(

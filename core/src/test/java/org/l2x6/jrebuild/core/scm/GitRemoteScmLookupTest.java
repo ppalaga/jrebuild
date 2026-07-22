@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.core.scm.GitRemoteScmLookup.UrlEntry;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +30,7 @@ public class GitRemoteScmLookupTest {
         assertThat(file).doesNotExist();
 
         {
-            final Map<ScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
+            final Map<AnnotatedScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
             assertThat(map).isEmpty();
         }
 
@@ -49,7 +49,7 @@ public class GitRemoteScmLookupTest {
         GitRemoteScmLookup.store(file, UrlEntry.failure(scmRepo("failed-repo"), outdatedRetrievalTime, "Failure message"));
 
         Runnable check = () -> {
-            final Map<ScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
+            final Map<AnnotatedScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
             assertThat(map).hasSize(5);
             assertThat(map.get(scmRepo("empty")).refs()).isEmpty();
             assertThat(map.get(scmRepo("empty")).retrievalTime()).isEqualTo(futureRetrievalTime);
@@ -90,7 +90,7 @@ public class GitRemoteScmLookupTest {
                 remoteScm = new GitRemoteScmLookup(file, minRetrievalTime) {
 
                     @Override
-                    UrlEntry lsRemote(ScmRepository url) {
+                    UrlEntry lsRemote(AnnotatedScmRepository url) {
                         return UrlEntry.success(url, futureRetrievalTime, updatedMap);
                     }
 
@@ -105,7 +105,7 @@ public class GitRemoteScmLookupTest {
             while (remoteScm.runner.getState() != State.TERMINATED) {
                 /* await termination */
             }
-            final Map<ScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
+            final Map<AnnotatedScmRepository, UrlEntry> map = GitRemoteScmLookup.load(file);
             assertThat(map).hasSize(5);
             assertThat(map.get(scmRepo("empty")).refs()).isEmpty();
             assertThat(map.get(scmRepo("empty")).retrievalTime()).isEqualTo(futureRetrievalTime);
@@ -124,7 +124,7 @@ public class GitRemoteScmLookupTest {
         }
     }
 
-    static ScmRepository scmRepo(String uri) {
-        return new ScmRepository(SOURCE, "git", uri);
+    static AnnotatedScmRepository scmRepo(String uri) {
+        return new AnnotatedScmRepository(SOURCE, "git", uri);
     }
 }

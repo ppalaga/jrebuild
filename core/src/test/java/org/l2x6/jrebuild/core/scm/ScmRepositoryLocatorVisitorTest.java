@@ -9,9 +9,9 @@ import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode.Builder;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode.DependencyAxis;
@@ -27,9 +27,9 @@ public class ScmRepositoryLocatorVisitorTest {
     static final Gavtc bar1Gavtc = Gavtc.of("bar:bar1:2.3.4");
     static final Gavtc bar2Gavtc = Gavtc.of("bar:bar2:2.3.4");
     static final FqScmRef foo123 = new FqScmRef(ScmRef.Kind.TAG.createRef("1.2.3", "deadbeef"),
-            new ScmRepository("s", "git", "http://github.com/foo/foo.git"));
+            new AnnotatedScmRepository("s", "git", "http://github.com/foo/foo.git"));
     static final FqScmRef bar234 = new FqScmRef(ScmRef.Kind.TAG.createRef("2.3.4", "c0febabe"),
-            new ScmRepository("s", "git", "http://github.com/bar/bar.git"));
+            new AnnotatedScmRepository("s", "git", "http://github.com/bar/bar.git"));
     static final List<RemoteRepository> repos = List.of();
     static final Map<Gav, FqScmRef> refs = Map.of(
             pGavtc.toGav(), foo123,

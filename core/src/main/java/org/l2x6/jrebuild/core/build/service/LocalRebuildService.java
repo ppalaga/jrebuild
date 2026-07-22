@@ -21,8 +21,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.CommonUtils;
 import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.common.git.GitUtils;
@@ -98,7 +98,7 @@ public record LocalRebuildService(
             Clock clock) {
         ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
         final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
-        final ScmRepository repo = scmRef.repository();
+        final AnnotatedScmRepository repo = scmRef.repository();
         if (!"git".equals(repo.type())) {
             return Uni.createFrom()
                     .item(buildReportFailure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
@@ -248,7 +248,7 @@ public record LocalRebuildService(
     }
 
     static BuildReport buildReportFailure(BuildRequest buildRequest, Clock clock, ZonedDateTime ts,
-            final ScmRepository repo, String message) {
+            final AnnotatedScmRepository repo, String message) {
         return new BuildReport(
                 buildRequest,
                 null,

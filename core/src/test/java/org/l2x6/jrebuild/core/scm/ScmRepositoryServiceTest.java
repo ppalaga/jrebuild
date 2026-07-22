@@ -18,9 +18,9 @@ import org.assertj.core.api.Assertions;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
@@ -57,7 +57,7 @@ public class ScmRepositoryServiceTest {
             final ScmRepositoryService locator = ScmRepositoryService.create(
                     context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel,
                     new MutableRemoteScmLookup("git").put(
-                            new ScmRepository("♢", "git", "https://github.com/l2x6/jrebuild-test"),
+                            new AnnotatedScmRepository("♢", "git", "https://github.com/l2x6/jrebuild-test"),
                             Result.success(Map.of("0.0.1", "deadbeef"))),
                     gitRepoCloneDir,
                     cacheDir,

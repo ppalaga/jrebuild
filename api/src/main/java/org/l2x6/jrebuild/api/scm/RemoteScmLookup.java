@@ -21,12 +21,12 @@ public interface RemoteScmLookup {
      * @return      a revision ID (sha for git) or {@code null} if the given reference does not exist in the given SCM
      *              repository
      */
-    default Result<String, String> getRevision(ScmRepository url, ScmRef.Kind kind, String name) {
+    default Result<String, String> getRevision(AnnotatedScmRepository url, ScmRef.Kind kind, String name) {
         return getRefs(url, kind).mapResult(r -> r.get(name))
                 .verify(r -> (r.result() == null) ? Result.failure("No such " + kind + " " + name + " in " + url) : r);
     }
 
-    Result<Map<String, String>, String> getRefs(ScmRepository url, ScmRef.Kind kind);
+    Result<Map<String, String>, String> getRefs(AnnotatedScmRepository url, ScmRef.Kind kind);
 
     static class AggregateRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
 
@@ -54,7 +54,7 @@ public interface RemoteScmLookup {
         }
 
         @Override
-        public Result<Map<String, String>, String> getRefs(ScmRepository url, Kind kind) {
+        public Result<Map<String, String>, String> getRefs(AnnotatedScmRepository url, Kind kind) {
             RemoteScmLookup result = lookups.get(url.type());
             if (result == null) {
                 return Result.failure("SCM type '" + url.type() + "' unsupported: " + url);
@@ -71,7 +71,7 @@ public interface RemoteScmLookup {
 
     static class MutableRemoteScmLookup implements RemoteScmLookup {
 
-        private final Map<ScmRepository, Result<Map<String, String>, String>> entries = new LinkedHashMap<>();
+        private final Map<AnnotatedScmRepository, Result<Map<String, String>, String>> entries = new LinkedHashMap<>();
 
         private final String type;
 
@@ -80,13 +80,13 @@ public interface RemoteScmLookup {
             this.type = type;
         }
 
-        public MutableRemoteScmLookup put(ScmRepository url, Result<Map<String, String>, String> tags) {
+        public MutableRemoteScmLookup put(AnnotatedScmRepository url, Result<Map<String, String>, String> tags) {
             entries.put(url, tags);
             return this;
         }
 
         @Override
-        public Result<Map<String, String>, String> getRefs(ScmRepository url, Kind kind) {
+        public Result<Map<String, String>, String> getRefs(AnnotatedScmRepository url, Kind kind) {
             return entries.computeIfAbsent(url, k -> Result.success(Collections.emptyMap()));
         }
 

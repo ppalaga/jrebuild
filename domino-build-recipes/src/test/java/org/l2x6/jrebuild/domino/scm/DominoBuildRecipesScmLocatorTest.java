@@ -22,12 +22,12 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -75,7 +75,8 @@ class DominoBuildRecipesScmLocatorTest {
 
     static final RemoteScmLookup scmLookup = new MutableRemoteScmLookup("git").put(
 
-            new ScmRepository(DominoBuildRecipesScmLocator.SOURCE, "git", "https://github.com/apache/commons-lang.git"),
+            new AnnotatedScmRepository(DominoBuildRecipesScmLocator.SOURCE, "git",
+                    "https://github.com/apache/commons-lang.git"),
             Result.success(Map.of("LANG_2_5", "deabeef")));
 
     @Test

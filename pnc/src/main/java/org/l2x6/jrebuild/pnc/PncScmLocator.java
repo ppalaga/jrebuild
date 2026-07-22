@@ -24,9 +24,9 @@ import org.jboss.logging.Logger;
 import org.jboss.pnc.dto.Artifact;
 import org.jboss.pnc.dto.Build;
 import org.jboss.pnc.dto.response.ArtifactInfo;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.api.util.ComparableVersion;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.pom.tuner.model.Gav;
@@ -130,7 +130,7 @@ public class PncScmLocator extends AbstractScmLocator {
                 String externalUrl;
                 if (build != null && (externalUrl = build.getScmRepository().getExternalUrl()) != null) {
                     externalUrl = normalizeScmUri(externalUrl);
-                    ScmRepository repo = new ScmRepository(SOURCE, "git", externalUrl);
+                    AnnotatedScmRepository repo = new AnnotatedScmRepository(SOURCE, "git", externalUrl);
                     String tag = build.getBuildConfigRevision().getScmRevision();
                     log.debugf("Validating tag from PNC for %s: %s#%s", latestArtifactInfo.getIdentifier(), repo, tag);
                     FqScmRef ref = validateTag(repo, tag, k.getVersion());

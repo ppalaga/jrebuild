@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.maven.model.Model;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.jrebuild.api.util.IndexedCollection;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
@@ -111,7 +111,7 @@ public class ScmRepositoryService {
                 log.warn(msg);
                 return FqScmRef.createFailed(
                         gav.getVersion(),
-                        ScmRepository.createFailed(failures.stream().map(FqScmRef::repository).toList()),
+                        AnnotatedScmRepository.createFailed(failures.stream().map(FqScmRef::repository).toList()),
                         shortMessage);
             }
             return FqScmRef.createUnknown(gav);

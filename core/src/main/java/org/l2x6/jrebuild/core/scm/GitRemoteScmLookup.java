@@ -33,16 +33,16 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
 
 public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
     private static final Logger log = Logger.getLogger(GitRemoteScmLookup.class);
 
-    private final CompletableFuture<Map<ScmRepository, UrlEntry>> urisToTagsToRevisions = new CompletableFuture<>();
+    private final CompletableFuture<Map<AnnotatedScmRepository, UrlEntry>> urisToTagsToRevisions = new CompletableFuture<>();
     private final Path cacheFile;
     private final Instant minRetrievalTime;
 
@@ -62,7 +62,7 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
     }
 
     @Override
-    public Result<Map<String, String>, String> getRefs(ScmRepository url, Kind kind) {
+    public Result<Map<String, String>, String> getRefs(AnnotatedScmRepository url, Kind kind) {
         if (kind != Kind.TAG) {
             throw new IllegalArgumentException("Looking up remote refs other than tags is unsupported");
         }
@@ -88,7 +88,7 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
         }
     }
 
-    UrlEntry lsRemote(ScmRepository url) {
+    UrlEntry lsRemote(AnnotatedScmRepository url) {
         log.debugf("Loading tag -> SHA1 mappings from %s", url);
 
         Map<String, String> tagsToHash;
@@ -154,12 +154,12 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
         }
     }
 
-    static Map<ScmRepository, UrlEntry> load(Path file) {
-        final Map<ScmRepository, UrlEntry> result = new ConcurrentHashMap<>();
+    static Map<AnnotatedScmRepository, UrlEntry> load(Path file) {
+        final Map<AnnotatedScmRepository, UrlEntry> result = new ConcurrentHashMap<>();
         if (Files.isRegularFile(file)) {
             try {
                 Iterator<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8).iterator();
-                ScmRepository url = null;
+                AnnotatedScmRepository url = null;
                 Instant retrievalTime = null;
                 Map<String, String> val = null;
                 String failureMessage = null;
@@ -198,7 +198,8 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
                         }
                         int colonPos = entry[1].indexOf(':');
 
-                        url = new ScmRepository(entry[0], entry[1].substring(0, colonPos), entry[1].substring(colonPos + 1));
+                        url = new AnnotatedScmRepository(entry[0], entry[1].substring(0, colonPos),
+                                entry[1].substring(colonPos + 1));
                         retrievalTime = Instant.parse(entry[2]);
                         val = new LinkedHashMap<>();
                     }
@@ -256,13 +257,13 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
         @Override
         public void run() {
             try {
-                final Map<ScmRepository, UrlEntry> uris = urisToTagsToRevisions.get(2, TimeUnit.SECONDS);
-                final Set<ScmRepository> sortedUris = new TreeSet<>(uris.keySet());
+                final Map<AnnotatedScmRepository, UrlEntry> uris = urisToTagsToRevisions.get(2, TimeUnit.SECONDS);
+                final Set<AnnotatedScmRepository> sortedUris = new TreeSet<>(uris.keySet());
                 log.infof("Storing tag -> SHA mappings for %d git repositories to %s due to application shutdown",
                         sortedUris.size(), cacheFile);
                 Files.createDirectories(cacheFile.getParent());
                 try (Writer w = Files.newBufferedWriter(cacheFile, StandardCharsets.UTF_8)) {
-                    for (ScmRepository uri : sortedUris) {
+                    for (AnnotatedScmRepository uri : sortedUris) {
                         final UrlEntry tags = uris.get(uri);
                         tags.append(w);
                     }
@@ -299,8 +300,8 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
         }
     }
 
-    static record UrlEntry(ScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
-        UrlEntry(ScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
+    static record UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
+        UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
             if (failureMessage != null && refs != null) {
                 throw new IllegalStateException("Cannot set both result and failure");
             }
@@ -310,11 +311,11 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
             this.failureMessage = failureMessage;
         }
 
-        static UrlEntry success(ScmRepository url, Instant retrievalTime, Map<String, String> refs) {
+        static UrlEntry success(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs) {
             return new UrlEntry(url, retrievalTime, refs, null);
         }
 
-        static UrlEntry failure(ScmRepository url, Instant retrievalTime, String failureMessage) {
+        static UrlEntry failure(AnnotatedScmRepository url, Instant retrievalTime, String failureMessage) {
             return new UrlEntry(url, retrievalTime, null, failureMessage);
         }
 

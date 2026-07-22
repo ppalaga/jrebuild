@@ -15,36 +15,36 @@ import org.eclipse.jgit.transport.URIish;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.pom.tuner.model.Gav;
 
-public record ScmRepository(
+public record AnnotatedScmRepository(
         String source,
         String type,
-        String uri) implements Comparable<ScmRepository> {
+        String uri) implements Comparable<AnnotatedScmRepository> {
     public static String UNKNOWN = "unknown";
     public static String FAILED = "failed";
-    private static final Comparator<ScmRepository> COMPARATOR = Comparator.comparing(ScmRepository::uri)
-            .thenComparing(ScmRepository::type).thenComparing(ScmRepository::source);
+    private static final Comparator<AnnotatedScmRepository> COMPARATOR = Comparator.comparing(AnnotatedScmRepository::uri)
+            .thenComparing(AnnotatedScmRepository::type).thenComparing(AnnotatedScmRepository::source);
 
-    public static ScmRepository of(String asString) {
+    public static AnnotatedScmRepository of(String asString) {
         String[] parts = asString.split(" ");
         if (parts.length != 3) {
             throw new IllegalStateException("Two spaces expected in '" + asString + "'");
         }
-        return new ScmRepository(parts[0], parts[1], parts[2]);
+        return new AnnotatedScmRepository(parts[0], parts[1], parts[2]);
     }
 
-    public static ScmRepository createUnknown(Gav gav) {
-        return new ScmRepository("?", UNKNOWN, gav.getGroupId());
+    public static AnnotatedScmRepository createUnknown(Gav gav) {
+        return new AnnotatedScmRepository("?", UNKNOWN, gav.getGroupId());
     }
 
-    public static ScmRepository createFailed(Collection<ScmRepository> failedRepositories) {
+    public static AnnotatedScmRepository createFailed(Collection<AnnotatedScmRepository> failedRepositories) {
 
-        return new ScmRepository(
+        return new AnnotatedScmRepository(
                 "?",
                 FAILED,
-                new Ebnfizer().add(failedRepositories.stream().map(ScmRepository::toString)).toString());
+                new Ebnfizer().add(failedRepositories.stream().map(AnnotatedScmRepository::toString)).toString());
     }
 
-    public ScmRepository(
+    public AnnotatedScmRepository(
             String source,
             String type,
             String uri) {
@@ -78,7 +78,7 @@ public record ScmRepository(
     }
 
     @Override
-    public int compareTo(ScmRepository o) {
+    public int compareTo(AnnotatedScmRepository o) {
         return COMPARATOR.compare(this, o);
     }
 

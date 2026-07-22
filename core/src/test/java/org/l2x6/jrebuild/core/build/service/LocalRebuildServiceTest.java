@@ -5,10 +5,10 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Tool;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildReport;
 import org.l2x6.jrebuild.core.build.BuildRequest;
@@ -30,7 +30,7 @@ public class LocalRebuildServiceTest {
 
             FqScmRef fqScmRef = new FqScmRef(
                     new ScmRef(Kind.TAG, "4.10.0", null),
-                    new ScmRepository("?", "git", "https://github.com/l2x6/pom-tuner.git"));
+                    new AnnotatedScmRepository("?", "git", "https://github.com/l2x6/pom-tuner.git"));
             BuildGroup bg = findService.findPublishedArtifacts(
                     fqScmRef,
                     SourceRootDirectories.root()).await().indefinitely();

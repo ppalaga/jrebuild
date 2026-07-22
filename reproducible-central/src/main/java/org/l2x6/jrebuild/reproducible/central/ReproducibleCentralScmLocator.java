@@ -12,9 +12,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.reproducible.central.api.Buildspec;
@@ -46,7 +46,7 @@ public class ReproducibleCentralScmLocator extends AbstractScmLocator {
         for (BuildspecRepository repo : buildspecRepositories) {
             Buildspec recipe = repo.lookup(gav);
             if (recipe != null) {
-                ScmRepository uri = new ScmRepository(SOURCE, "git", recipe.gitRepo());
+                AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, "git", recipe.gitRepo());
                 try {
                     String tag = recipe.gitTag();
                     FqScmRef ref = validateTag(uri, tag, gav.getVersion());

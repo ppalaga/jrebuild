@@ -32,10 +32,10 @@ import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.RemoteRefUpdate.Status;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 
 public class GitUtils {
     private static final Logger log = Logger.getLogger(GitUtils.class);
@@ -99,7 +99,8 @@ public class GitUtils {
             String branch,
             Path directory,
             int depth) {
-        FqScmRef fqScmRef = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new ScmRepository("?", "git", remoteUri));
+        FqScmRef fqScmRef = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null),
+                new AnnotatedScmRepository("?", "git", remoteUri));
         return cloneOrFetchAndReset(fqScmRef, directory, depth);
     }
 

@@ -17,10 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.Shell;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildReport;
@@ -68,7 +68,7 @@ public class GitBuildReportStorageTest {
                     cloneDirectoriesLayout);
 
             Gavtc gavtc = Gavtc.of("org.foo:foo:1.2.3:jar");
-            FqScmRef scmRef = new FqScmRef(new ScmRef(Kind.TAG, "1.2.3", null), new ScmRepository("?", "git", gitUri));
+            FqScmRef scmRef = new FqScmRef(new ScmRef(Kind.TAG, "1.2.3", null), new AnnotatedScmRepository("?", "git", gitUri));
             BuildGroup bg = new BuildGroup(
                     scmRef,
                     Set.of(gavtc));

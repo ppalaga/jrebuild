@@ -20,12 +20,12 @@ import java.util.regex.Pattern;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -45,7 +45,7 @@ public class PomScmLocator extends AbstractScmLocator {
         final Model effectiveModel = getEffectiveModel.apply(gav);
         final Scm scm = effectiveModel.getScm();
         final List<FqScmRef> result = new ArrayList<>();
-        final Set<ScmRepository> visitedRepos = new HashSet<>();
+        final Set<AnnotatedScmRepository> visitedRepos = new HashSet<>();
         if (scm != null) {
             List<Supplier<String>> uris = List.of(scm::getConnection, scm::getDeveloperConnection, () -> {
                 String url = scm.getUrl();
@@ -54,7 +54,7 @@ public class PomScmLocator extends AbstractScmLocator {
             for (Supplier<String> supplier : uris) {
                 String url = supplier.get();
                 if (url != null) {
-                    ScmRepository repo = toScmRepository(url);
+                    AnnotatedScmRepository repo = toScmRepository(url);
                     if (visitedRepos.add(repo)) {
                         FqScmRef ref = of(gav, scm.getTag(), repo);
                         if (!ref.isUnknownOrFailed()) {
@@ -67,7 +67,7 @@ public class PomScmLocator extends AbstractScmLocator {
         }
         String url = effectiveModel.getUrl();
         if (url != null && url.startsWith("https://github.com/")) {
-            ScmRepository repo = toScmRepository(url);
+            AnnotatedScmRepository repo = toScmRepository(url);
             if (visitedRepos.add(repo)) {
                 FqScmRef ref = of(gav, scm.getTag(), repo);
                 if (!ref.isUnknownOrFailed()) {
@@ -79,15 +79,15 @@ public class PomScmLocator extends AbstractScmLocator {
         return Collections.unmodifiableList(result);
     }
 
-    static ScmRepository toScmRepository(String url) {
+    static AnnotatedScmRepository toScmRepository(String url) {
         Matcher m = SCM_TYPE_PATTERN.matcher(url);
         if (m.matches()) {
-            return new ScmRepository(SOURCE, m.group(1), normalizeScmUri(m.group(2)));
+            return new AnnotatedScmRepository(SOURCE, m.group(1), normalizeScmUri(m.group(2)));
         }
-        return new ScmRepository(SOURCE, "git", normalizeScmUri(url));
+        return new AnnotatedScmRepository(SOURCE, "git", normalizeScmUri(url));
     }
 
-    public FqScmRef of(Gav gav, String tag, ScmRepository uri) {
+    public FqScmRef of(Gav gav, String tag, AnnotatedScmRepository uri) {
         Objects.requireNonNull(uri, "repository cannot be null");
         try {
             if (tag == null || "HEAD".equals(tag)) {

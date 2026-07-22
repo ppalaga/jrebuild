@@ -2,10 +2,10 @@ package org.l2x6.jrebuild.core.build;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
-import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -15,7 +15,7 @@ public class BuildGroupTest {
     void findMainGroupId() {
 
         FqScmRef scmRef = new FqScmRef(new ScmRef(Kind.TAG, "1.2.3", "deadbeef"),
-                new ScmRepository("?", "git", "https://github.com/org/project.git"));
+                new AnnotatedScmRepository("?", "git", "https://github.com/org/project.git"));
         {
             BuildGroup g = BuildGroup.builder(scmRef)
                     .artifact(Gavtc.of("foo:f1:1.2.3"))
