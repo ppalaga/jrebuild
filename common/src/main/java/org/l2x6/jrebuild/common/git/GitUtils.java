@@ -30,12 +30,12 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
-import org.eclipse.jgit.transport.RemoteRefUpdate.Status;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.FqScmRef.FqScmRefRecord;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryRecord;
 
 public class GitUtils {
     private static final Logger log = Logger.getLogger(GitUtils.class);
@@ -53,7 +53,7 @@ public class GitUtils {
      * @return
      */
     public static Git cloneOrFetchAndReset(
-            AnnotatedFqScmRef fqScmRef,
+            FqScmRef fqScmRef,
             Path directory,
             int depth) {
         if (!fqScmRef.repository().isGit()) {
@@ -87,7 +87,7 @@ public class GitUtils {
     }
 
     public static Uni<Git> cloneOrFetchAndResetAsync(
-            AnnotatedFqScmRef fqScmRef,
+            FqScmRef fqScmRef,
             Path directory,
             int depth) {
         return Uni.createFrom().item(() -> cloneOrFetchAndReset(fqScmRef, directory, depth))
@@ -99,8 +99,8 @@ public class GitUtils {
             String branch,
             Path directory,
             int depth) {
-        AnnotatedFqScmRef fqScmRef = new AnnotatedFqScmRef(new ScmRef(Kind.BRANCH, branch, null),
-                new AnnotatedScmRepository("?", "git", remoteUri));
+        FqScmRefRecord fqScmRef = new FqScmRefRecord(new ScmRef(Kind.BRANCH, branch, null),
+                new ScmRepositoryRecord("git", remoteUri));
         return cloneOrFetchAndReset(fqScmRef, directory, depth);
     }
 
@@ -118,7 +118,7 @@ public class GitUtils {
         }
     }
 
-    static String fetchAndReset(AnnotatedFqScmRef fqScmRef, Git git) {
+    static String fetchAndReset(FqScmRef fqScmRef, Git git) {
         final Path dir = git.getRepository().getWorkTree().toPath();
         /* Forget local changes */
         try {

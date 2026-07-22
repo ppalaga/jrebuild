@@ -33,10 +33,10 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
 
 public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
@@ -300,8 +300,10 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
         }
     }
 
-    static record UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
-        UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs, String failureMessage) {
+    static record UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs,
+            String failureMessage) {
+        UrlEntry(AnnotatedScmRepository url, Instant retrievalTime, Map<String, String> refs,
+                String failureMessage) {
             if (failureMessage != null && refs != null) {
                 throw new IllegalStateException("Cannot set both result and failure");
             }

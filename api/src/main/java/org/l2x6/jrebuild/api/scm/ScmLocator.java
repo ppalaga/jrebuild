@@ -19,7 +19,7 @@ public interface ScmLocator {
      * </ul>
      *
      * @param  gav
-     * @return     a list of {@link AnnotatedFqScmRef}
+     * @return     a list of {@link FqScmRef.AnnotatedFqScmRef}
      */
-    List<AnnotatedFqScmRef> locate(Gav gav);
+    List<FqScmRef.AnnotatedFqScmRef> locate(Gav gav);
 }

@@ -12,9 +12,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.reproducible.central.api.Buildspec;
@@ -57,7 +57,7 @@ public class ReproducibleCentralScmLocator extends AbstractScmLocator {
                     }
                     //                    final String msg = "Could not find SCM revision for tag " + tag + " declared in " + recipe.file() + " for "
                     //                            + gav + " in " + uri;
-                    //                    result.add(FqScmRef.createFailed(gav, uri, msg));
+                    //                    result.add(createFailed(gav, uri, msg));
                 } catch (Exception e) {
                     final StringWriter sw = new StringWriter();
                     final String msg = "Could not find SCM ref for " + gav + " in " + uri;

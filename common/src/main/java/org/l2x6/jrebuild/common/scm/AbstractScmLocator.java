@@ -9,13 +9,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.pom.tuner.model.Gav;
 
 public abstract class AbstractScmLocator implements ScmLocator {

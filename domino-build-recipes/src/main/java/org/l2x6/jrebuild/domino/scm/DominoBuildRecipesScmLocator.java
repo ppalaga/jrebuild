@@ -21,12 +21,12 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeFile;
@@ -79,7 +79,8 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
         final List<AnnotatedFqScmRef> result = new ArrayList<>();
         for (RepositoryInfo repositoryInfo : repos) {
             final String type = repositoryInfo.getType();
-            final AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, type == null ? "git" : type,
+            final AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE,
+                    type == null ? "git" : type,
                     repositoryInfo.getUriWithoutFragment());
             log.debugf("Mapping %s to a tag in %s with mappings %s", gav, uri, allMappings);
 

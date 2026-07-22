@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.jackson.Serializers;
@@ -30,14 +30,14 @@ import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
-public record BuildGroup(
-        AnnotatedFqScmRef scmRef,
+public record BuildGroup<T extends FqScmRef>(
+        T fqScmRef,
         @JsonSerialize(contentUsing = Serializers.GavtcSerializer.class) @JsonDeserialize(
                 contentUsing = Serializers.GavtcDeserializer.class) Set<Gavtc> artifacts,
         @JsonIgnore int hashCode_) {
 
-    public BuildGroup(AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts, int hashCode_) {
-        this.scmRef = Objects.requireNonNull(scmRef);
+    public BuildGroup(T fqScmRef, Set<Gavtc> artifacts, int hashCode_) {
+        this.fqScmRef = Objects.requireNonNull(fqScmRef);
         this.artifacts = JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts));
         if (hashCode_ == 0) {
             throw new IllegalArgumentException("hashCode_ cannot be 0");
@@ -45,25 +45,25 @@ public record BuildGroup(
         this.hashCode_ = hashCode_;
     }
 
-    public BuildGroup(AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts) {
+    public BuildGroup(T scmRef, Set<Gavtc> artifacts) {
         this(Objects.requireNonNull(scmRef), JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts)),
                 31 * scmRef.hashCode() + artifacts.hashCode());
     }
 
     @JsonCreator
-    static BuildGroup fromJson(
-            @JsonProperty("scmRef") AnnotatedFqScmRef scmRef,
+    static <T extends FqScmRef> BuildGroup<T> fromJson(
+            @JsonProperty("fqScmRef") T fqScmRef,
             @JsonProperty("artifacts") Set<Gavtc> artifacts) {
         Set<Gavtc> immutable = Set.copyOf(artifacts);
-        return new BuildGroup(scmRef, immutable, 31 * scmRef.hashCode() + immutable.hashCode());
+        return new BuildGroup<>(fqScmRef, immutable, 31 * fqScmRef.hashCode() + immutable.hashCode());
     }
 
-    public static Builder builder(AnnotatedFqScmRef scmRef) {
-        return new Builder(scmRef);
+    public static <T extends FqScmRef> Builder<T> builder(T scmRef) {
+        return new Builder<>(scmRef);
     }
 
-    public Builder builder() {
-        return new Builder(scmRef).artifacts(artifacts);
+    public Builder<T> builder() {
+        return new Builder<>(fqScmRef).artifacts(artifacts);
     }
 
     @Override
@@ -79,8 +79,9 @@ public record BuildGroup(
             return false;
         if (getClass() != obj.getClass())
             return false;
-        BuildGroup other = (BuildGroup) obj;
-        return scmRef.equals(other.scmRef) && artifacts.equals(other.artifacts);
+        @SuppressWarnings("unchecked")
+        BuildGroup<T> other = (BuildGroup<T>) obj;
+        return fqScmRef.equals(other.fqScmRef) && artifacts.equals(other.artifacts);
     }
 
     public boolean contains(Gav gav) {
@@ -90,6 +91,7 @@ public record BuildGroup(
                 .findAny().isPresent();
     }
 
+    @SuppressWarnings("unused")
     public Gav findMainArtifact() {
         if (artifacts.isEmpty()) {
             throw new IllegalStateException("No artifacts in BuildGroup " + this);
@@ -158,10 +160,11 @@ public record BuildGroup(
 
     @Override
     public String toString() {
-        return append(new StringBuilder(), scmRef, artifacts).toString();
+        return append(new StringBuilder(), fqScmRef, artifacts).toString();
     }
 
-    public static StringBuilder append(StringBuilder sb, AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts) {
+    @SuppressWarnings("unused")
+    public static <T extends FqScmRef> StringBuilder append(StringBuilder sb, T scmRef, Set<Gavtc> artifacts) {
         sb.append(scmRef);
         if (artifacts.isEmpty()) {
             sb.append(" []");
@@ -194,40 +197,40 @@ public record BuildGroup(
         return sb;
     }
 
-    public static class Builder {
-        private final AnnotatedFqScmRef scmRef;
+    public static class Builder<T extends FqScmRef> {
+        private final T scmRef;
         private final SortedSet<Gavtc> artifacts;
 
-        public Builder(AnnotatedFqScmRef scmRef) {
+        public Builder(T scmRef) {
             this.scmRef = scmRef;
             this.artifacts = new TreeSet<>(Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
         }
 
-        public AnnotatedFqScmRef scmRef() {
+        public T scmRef() {
             return scmRef;
         }
 
-        public Builder artifact(Gavtc artifact) {
+        public Builder<T> artifact(Gavtc artifact) {
             this.artifacts.add(artifact);
             return this;
         }
 
-        public Builder artifacts(Collection<Gavtc> artifacts) {
+        public Builder<T> artifacts(Collection<Gavtc> artifacts) {
             this.artifacts.addAll(artifacts);
             return this;
         }
 
-        public Builder merge(BuildGroup other) {
-            if (!this.scmRef.equals(other.scmRef)) {
-                throw new IllegalStateException("Cannot merge BuildGroup with scmRef " + other.scmRef
+        public Builder<T> merge(BuildGroup<T> other) {
+            if (!this.scmRef.equals(other.fqScmRef)) {
+                throw new IllegalStateException("Cannot merge BuildGroup with scmRef " + other.fqScmRef
                         + " into BuildGroup with scmRef " + this.scmRef + "; they must be equal");
             }
             this.artifacts.addAll(other.artifacts);
             return this;
         }
 
-        public BuildGroup build() {
-            return new BuildGroup(scmRef, Collections.unmodifiableSet(new TreeSet<>(this.artifacts)));
+        public BuildGroup<T> build() {
+            return new BuildGroup<>(scmRef, Collections.unmodifiableSet(new TreeSet<>(this.artifacts)));
         }
 
         @Override
@@ -243,7 +246,8 @@ public record BuildGroup(
                 return false;
             if (getClass() != obj.getClass())
                 return false;
-            Builder other = (Builder) obj;
+            @SuppressWarnings("unchecked")
+            Builder<T> other = (Builder<T>) obj;
             return Objects.equals(scmRef, other.scmRef);
         }
 

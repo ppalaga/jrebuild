@@ -22,12 +22,12 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.pom.tuner.model.Gav;
 

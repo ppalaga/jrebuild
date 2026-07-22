@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -23,10 +24,10 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.CredentialsProvider;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildReport;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
@@ -42,7 +43,7 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 public interface BuildReportStorage {
     Uni<BuildReport> store(BuildReport buildReport);
 
-    Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef);
+    Multi<BuildReport> list(FqScmRef fqScmRef);
 
     Uni<Void> close();
 
@@ -71,7 +72,7 @@ public interface BuildReportStorage {
         private final String authorEmail;
         private final int pushRetryCount;
         private final CredentialsProvider credentialsProvider;
-        private AnnotatedFqScmRef remote;
+        private FqScmRef remote;
 
         GitBuildReportStorage(
                 FileSystem fileSystem,
@@ -86,8 +87,7 @@ public interface BuildReportStorage {
             this.authorEmail = authorEmail;
             this.pushRetryCount = pushRetryCount;
             this.credentialsProvider = credentialsProvider;
-            this.remote = new AnnotatedFqScmRef(new ScmRef(Kind.BRANCH, branch, null),
-                    new AnnotatedScmRepository("?", "git", gitUri));
+            this.remote = FqScmRef.of(new ScmRef(Kind.BRANCH, branch, null), ScmRepository.git(gitUri));
             this.delegate = cloneDirectoriesLayout
                     .lockDirectory(gitUri)
                     .chain(cloneDirectory -> GitUtils
@@ -103,7 +103,7 @@ public interface BuildReportStorage {
 
         @Override
         public Uni<BuildReport> store(BuildReport buildReport) {
-            AnnotatedFqScmRef scmRef = buildReport.buildRequest().buildGroup().scmRef();
+            FqScmRef scmRef = buildReport.buildRequest().buildGroup().fqScmRef();
             final String message = buildReport.reproducibility() + ": " + scmRef.repository().uri() + "#"
                     + scmRef.scmRef().name();
             return delegate
@@ -121,7 +121,7 @@ public interface BuildReportStorage {
         }
 
         @Override
-        public Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef) {
+        public Multi<BuildReport> list(FqScmRef fqScmRef) {
             return delegate.chain(gitFsStorage -> Uni.createFrom()
                     .item(() -> {
                         GitUtils.assertSuccess(GitUtils.rebase(gitFsStorage.git, remote.repository().uri()));
@@ -173,7 +173,7 @@ public interface BuildReportStorage {
         }
 
         @SuppressWarnings("unused")
-        Uni<Path> getOrCreateReportsDirectory(AnnotatedFqScmRef fqScmRef) {
+        Uni<Path> getOrCreateReportsDirectory(FqScmRef fqScmRef) {
             Path result = reportsDirectory.resolve(GitUtils.uriToFileName(fqScmRef.repository().uri()))
                     .resolve(fqScmRef.scmRef().name());
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
@@ -187,12 +187,15 @@ public interface BuildReportStorage {
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                 // .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
                 .addModule(new JavaTimeModule())
+                .addModule(new SimpleModule()
+                        .addAbstractTypeMapping(FqScmRef.class, FqScmRef.FqScmRefRecord.class)
+                        .addAbstractTypeMapping(ScmRepository.class, ScmRepository.ScmRepositoryRecord.class))
                 .build().setDefaultPropertyInclusion(JsonInclude.Include.NON_DEFAULT);
 
         @SuppressWarnings("unused")
         @Override
         public Uni<BuildReport> store(BuildReport buildReport) {
-            return getOrCreateReportsDirectory(buildReport.buildRequest().buildGroup().scmRef())
+            return getOrCreateReportsDirectory(buildReport.buildRequest().buildGroup().fqScmRef())
                     .onItem()
                     .transformToUni(buildReportDir -> Uni.createFrom()
                             .item(buildReport)
@@ -213,7 +216,7 @@ public interface BuildReportStorage {
         }
 
         @Override
-        public Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef) {
+        public Multi<BuildReport> list(FqScmRef fqScmRef) {
             return getOrCreateReportsDirectory(fqScmRef)
                     .onItem().transformToMulti(reportsDir -> {
                         return fileSystem.readDir(reportsDir.toString())

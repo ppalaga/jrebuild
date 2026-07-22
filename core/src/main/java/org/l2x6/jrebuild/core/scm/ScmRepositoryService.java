@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.maven.model.Model;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.jrebuild.api.util.IndexedCollection;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
@@ -74,6 +74,7 @@ public class ScmRepositoryService {
         this.scmLocators = scmLocators;
     }
 
+    @SuppressWarnings("unused")
     public AnnotatedFqScmRef locate(Gav gav, Deque<Builder> stack) {
         return cachedScmInfos.computeIfAbsent(gav, k -> {
             final List<AnnotatedFqScmRef> failures = new ArrayList<>();
@@ -90,7 +91,8 @@ public class ScmRepositoryService {
                 }
             }
             if (!failures.isEmpty()) {
-                final String shortMessage = new Ebnfizer().add(failures.stream().map(AnnotatedFqScmRef::failureMessage))
+                final String shortMessage = new Ebnfizer()
+                        .add(failures.stream().map(AnnotatedFqScmRef::failureMessage))
                         .toString();
                 final StringBuilder failureMessages = new StringBuilder(shortMessage);
                 final Iterator<Builder> it = stack.iterator();
@@ -112,7 +114,8 @@ public class ScmRepositoryService {
                 log.warn(msg);
                 return AnnotatedFqScmRef.createFailed(
                         gav.getVersion(),
-                        AnnotatedScmRepository.createFailed(failures.stream().map(AnnotatedFqScmRef::repository).toList()),
+                        AnnotatedScmRepository
+                                .createFailed(failures.stream().map(AnnotatedFqScmRef::repository).toList()),
                         shortMessage);
             }
             return AnnotatedFqScmRef.createUnknown(gav);
@@ -172,18 +175,18 @@ public class ScmRepositoryService {
     }
 
     public static class ScmInfoNode implements Node<ScmInfoNode> {
-        private final BuildGroup buildGroup;
+        private final BuildGroup<AnnotatedFqScmRef> buildGroup;
         private final Set<ScmInfoNode> children;
         private final int hashCode;
 
-        private ScmInfoNode(BuildGroup buildGroup, Set<ScmInfoNode> children) {
+        private ScmInfoNode(BuildGroup<AnnotatedFqScmRef> buildGroup, Set<ScmInfoNode> children) {
             super();
             this.buildGroup = Objects.requireNonNull(buildGroup);
             this.children = JrebuildUtils.assertImmutable(Objects.requireNonNull(children));
             this.hashCode = 31 * buildGroup.hashCode() + children.hashCode();
         }
 
-        public static Builder builder(BuildGroup.Builder buildGroup) {
+        public static Builder builder(BuildGroup.Builder<AnnotatedFqScmRef> buildGroup) {
             return new Builder(buildGroup);
         }
 
@@ -195,7 +198,7 @@ public class ScmRepositoryService {
             return result;
         }
 
-        public BuildGroup buildGroup() {
+        public BuildGroup<AnnotatedFqScmRef> buildGroup() {
             return buildGroup;
         }
 
@@ -226,15 +229,16 @@ public class ScmRepositoryService {
         }
 
         public static class Builder implements Node<Builder> {
-            private final BuildGroup.Builder buildGroup;
+            private final BuildGroup.Builder<AnnotatedFqScmRef> buildGroup;
             private IndexedCollection<AnnotatedFqScmRef, Builder> children = IndexedCollection.linked(
                     b -> b.buildGroup.scmRef(),
                     (Builder b1, Builder b2) -> b1.merge(b2));
 
-            public Builder(BuildGroup.Builder buildGroup) {
+            public Builder(BuildGroup.Builder<AnnotatedFqScmRef> buildGroup) {
                 this.buildGroup = Objects.requireNonNull(buildGroup);
             }
 
+            @SuppressWarnings("unused")
             public Builder getOrAddChildBuilder(AnnotatedFqScmRef scmRef) {
                 return children.computeIfAbsent(scmRef, k -> new Builder(BuildGroup.builder(scmRef)));
             }

@@ -7,13 +7,14 @@ package org.l2x6.jrebuild.common.scm;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.pom.tuner.model.Gav;
 
 public class AbstractScmLocatorTest {
     @Test
     void formatters() {
-        AnnotatedScmRepository repo = AnnotatedScmRepository.of("? git https://github.com/quarkusio/quarkus.git");
+        AnnotatedScmRepository repo = AnnotatedScmRepository
+                .of("? git https://github.com/quarkusio/quarkus.git");
 
         List<String> tags = AbstractScmLocator.VERSION_TO_TAG_FORMATTERS.stream()
                 .map(f -> f.apply(repo, Gav.of("foo:foo-core:1.2.3")))
@@ -39,12 +40,14 @@ public class AbstractScmLocatorTest {
     @Test
     void lastPathSegment() {
         Assertions
-                .assertThat(AnnotatedScmRepository.of("? git git@github.com:quarkusio/quarkus.git").lastPathSegment()
-                        .get())
+                .assertThat(
+                        AnnotatedScmRepository.of("? git git@github.com:quarkusio/quarkus.git").lastPathSegment()
+                                .get())
                 .isEqualTo("quarkus");
         Assertions
                 .assertThat(
-                        AnnotatedScmRepository.of("? git https://github.com/quarkusio/quarkus.git").lastPathSegment()
+                        AnnotatedScmRepository.of("? git https://github.com/quarkusio/quarkus.git")
+                                .lastPathSegment()
                                 .get())
                 .isEqualTo("quarkus");
     }

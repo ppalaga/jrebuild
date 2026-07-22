@@ -9,9 +9,9 @@ import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.junit.jupiter.api.Test;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode.Builder;
 import org.l2x6.jrebuild.core.dep.ResolvedArtifactNode.DependencyAxis;
@@ -26,9 +26,11 @@ public class ScmRepositoryLocatorVisitorTest {
     static final Gavtc ch2Gavtc = Gavtc.of("foo:foo-child2:1.2.3");
     static final Gavtc bar1Gavtc = Gavtc.of("bar:bar1:2.3.4");
     static final Gavtc bar2Gavtc = Gavtc.of("bar:bar2:2.3.4");
-    static final AnnotatedFqScmRef foo123 = new AnnotatedFqScmRef(ScmRef.Kind.TAG.createRef("1.2.3", "deadbeef"),
+    static final AnnotatedFqScmRef foo123 = new AnnotatedFqScmRef(
+            ScmRef.Kind.TAG.createRef("1.2.3", "deadbeef"),
             new AnnotatedScmRepository("s", "git", "http://github.com/foo/foo.git"));
-    static final AnnotatedFqScmRef bar234 = new AnnotatedFqScmRef(ScmRef.Kind.TAG.createRef("2.3.4", "c0febabe"),
+    static final AnnotatedFqScmRef bar234 = new AnnotatedFqScmRef(
+            ScmRef.Kind.TAG.createRef("2.3.4", "c0febabe"),
             new AnnotatedScmRepository("s", "git", "http://github.com/bar/bar.git"));
     static final List<RemoteRepository> repos = List.of();
     static final Map<Gav, AnnotatedFqScmRef> refs = Map.of(
@@ -50,7 +52,7 @@ public class ScmRepositoryLocatorVisitorTest {
         ScmInfoNode root = visitor().walk(chArtNode).rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).isEmpty();
     }
 
@@ -64,7 +66,7 @@ public class ScmRepositoryLocatorVisitorTest {
         final ScmInfoNode root = visitor().walk(pArtNode).rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, pGavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).isEmpty();
     }
 
@@ -78,12 +80,12 @@ public class ScmRepositoryLocatorVisitorTest {
         final ScmInfoNode root = visitor().walk(pArtNode).rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(pGavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).hasSize(1);
 
         final ScmInfoNode ch = root.children().iterator().next();
         Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc);
-        Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+        Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
         Assertions.assertThat(ch.children()).isEmpty();
 
     }
@@ -100,12 +102,12 @@ public class ScmRepositoryLocatorVisitorTest {
         final ScmInfoNode root = visitor().walk(pArtNode).rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, pGavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).hasSize(1);
 
         final ScmInfoNode ch = root.children().iterator().next();
         Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc);
-        Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+        Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
         Assertions.assertThat(ch.children()).isEmpty();
 
     }
@@ -123,12 +125,12 @@ public class ScmRepositoryLocatorVisitorTest {
                 .rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(pGavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).hasSize(1);
 
         final ScmInfoNode ch = root.children().iterator().next();
         Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc, bar2Gavtc);
-        Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+        Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
         Assertions.assertThat(ch.children()).isEmpty();
 
     }
@@ -149,12 +151,12 @@ public class ScmRepositoryLocatorVisitorTest {
                     .rootNode();
 
             Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, ch2Gavtc, pGavtc);
-            Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+            Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
             Assertions.assertThat(root.children()).hasSize(1);
 
             final ScmInfoNode ch = root.children().iterator().next();
             Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc, bar2Gavtc);
-            Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+            Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
             Assertions.assertThat(ch.children()).isEmpty();
         }
 
@@ -170,12 +172,12 @@ public class ScmRepositoryLocatorVisitorTest {
                     .rootNode();
 
             Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, ch2Gavtc, pGavtc);
-            Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+            Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
             Assertions.assertThat(root.children()).hasSize(1);
 
             final ScmInfoNode ch = root.children().iterator().next();
             Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc, bar2Gavtc);
-            Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+            Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
             Assertions.assertThat(ch.children()).isEmpty();
         }
         {
@@ -189,12 +191,12 @@ public class ScmRepositoryLocatorVisitorTest {
                     .rootNode();
 
             Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, ch2Gavtc, pGavtc);
-            Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+            Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
             Assertions.assertThat(root.children()).hasSize(1);
 
             final ScmInfoNode ch = root.children().iterator().next();
             Assertions.assertThat(ch.buildGroup().artifacts()).containsExactly(bar1Gavtc, bar2Gavtc);
-            Assertions.assertThat(ch.buildGroup().scmRef()).isEqualTo(bar234);
+            Assertions.assertThat(ch.buildGroup().fqScmRef()).isEqualTo(bar234);
             Assertions.assertThat(ch.children()).isEmpty();
         }
 
@@ -212,7 +214,7 @@ public class ScmRepositoryLocatorVisitorTest {
                 .rootNode();
 
         Assertions.assertThat(root.buildGroup().artifacts()).containsExactly(ch1Gavtc, ch2Gavtc, pGavtc);
-        Assertions.assertThat(root.buildGroup().scmRef()).isEqualTo(foo123);
+        Assertions.assertThat(root.buildGroup().fqScmRef()).isEqualTo(foo123);
         Assertions.assertThat(root.children()).isEmpty();
 
     }

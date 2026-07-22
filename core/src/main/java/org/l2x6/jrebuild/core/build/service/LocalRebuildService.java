@@ -21,8 +21,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
-import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
-import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.CommonUtils;
 import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.common.git.GitUtils;
@@ -56,7 +56,7 @@ public record LocalRebuildService(
     }
 
     Uni<BuildReport> ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility, Clock clock) {
-        return buildReportStorage.list(buildRequest.buildGroup().scmRef())
+        return buildReportStorage.list(buildRequest.buildGroup().fqScmRef())
                 .select().where(report -> report.reproducibility().isBetterOrSame(requiredReproducibility)
                         && report.containsAll(buildRequest.buildGroup().artifacts()))
                 .collect()
@@ -67,7 +67,7 @@ public record LocalRebuildService(
                     }
                     /* We have to rebuild */
                     /* Create or find the build directory */
-                    return cloneDirectoriesLayout.lockDirectory(buildRequest.buildGroup().scmRef().repository().uri())
+                    return cloneDirectoriesLayout.lockDirectory(buildRequest.buildGroup().fqScmRef().repository().uri())
                             .onItem()
                             .transformToUni(cloneDir -> deployDirectoriesLayout
                                     .createDeployDirectory()
@@ -97,8 +97,8 @@ public record LocalRebuildService(
             ReferenceMavenRepository referenceMavenRepository,
             Clock clock) {
         ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
-        final AnnotatedFqScmRef scmRef = buildRequest.buildGroup().scmRef();
-        final AnnotatedScmRepository repo = scmRef.repository();
+        final FqScmRef scmRef = buildRequest.buildGroup().fqScmRef();
+        final ScmRepository repo = scmRef.repository();
         if (!repo.isGit()) {
             return Uni.createFrom()
                     .item(buildReportFailure(buildRequest, clock, ts, repo, "Cannot checkout from SCM type " + repo.type()));
@@ -248,7 +248,7 @@ public record LocalRebuildService(
     }
 
     static BuildReport buildReportFailure(BuildRequest buildRequest, Clock clock, ZonedDateTime ts,
-            final AnnotatedScmRepository repo, String message) {
+            final ScmRepository repo, String message) {
         return new BuildReport(
                 buildRequest,
                 null,

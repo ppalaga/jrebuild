@@ -8,16 +8,17 @@ import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Shell;
 import org.l2x6.jrebuild.api.os.Tool;
+import org.l2x6.jrebuild.api.scm.FqScmRef;
 
 public record BuildRequest(
-        BuildGroup buildGroup,
+        BuildGroup<FqScmRef> buildGroup,
         Os os,
         Arch arch,
         Shell shell,
         List<Tool> tools,
         String buildScript) {
 
-    public BuildRequest(BuildGroup buildGroup,
+    public BuildRequest(BuildGroup<FqScmRef> buildGroup,
             Os os,
             Arch arch,
             Shell shell,
