@@ -11,7 +11,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.eclipse.jgit.api.Git;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildGroup.Builder;
@@ -56,7 +56,8 @@ public class FindReferenceArtifactsService {
      *                               {@link #referenceMavenRepository}
      *                               from the respository represented by {@code fqScmRef}
      */
-    public Uni<BuildGroup> findPublishedArtifacts(FqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories) {
+    public Uni<BuildGroup> findPublishedArtifacts(AnnotatedFqScmRef fqScmRef,
+            Function<Path, List<Path>> sourceRootDirectories) {
 
         Uni<Set<Gav>> sourceTreeGavs = cloneDirectoriesLayout.lockDirectory(fqScmRef.repository().uri())
                 .chain(cloneDir -> Uni.createFrom()
@@ -82,7 +83,8 @@ public class FindReferenceArtifactsService {
 
     }
 
-    Set<Gav> cloneAndList(FqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories, CloneDirectory cloneDir) {
+    Set<Gav> cloneAndList(AnnotatedFqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories,
+            CloneDirectory cloneDir) {
         // Clone or fetch to workingCopyDir
         try (@SuppressWarnings("unused")
         Git git = GitUtils.cloneOrFetchAndReset(fqScmRef, cloneDir.cloneDirectory(), 1)) {

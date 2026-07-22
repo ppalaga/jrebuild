@@ -23,8 +23,8 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.CredentialsProvider;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.common.git.GitUtils;
@@ -42,7 +42,7 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 public interface BuildReportStorage {
     Uni<BuildReport> store(BuildReport buildReport);
 
-    Multi<BuildReport> list(FqScmRef fqScmRef);
+    Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef);
 
     Uni<Void> close();
 
@@ -71,7 +71,7 @@ public interface BuildReportStorage {
         private final String authorEmail;
         private final int pushRetryCount;
         private final CredentialsProvider credentialsProvider;
-        private FqScmRef remote;
+        private AnnotatedFqScmRef remote;
 
         GitBuildReportStorage(
                 FileSystem fileSystem,
@@ -86,7 +86,8 @@ public interface BuildReportStorage {
             this.authorEmail = authorEmail;
             this.pushRetryCount = pushRetryCount;
             this.credentialsProvider = credentialsProvider;
-            this.remote = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null), new AnnotatedScmRepository("?", "git", gitUri));
+            this.remote = new AnnotatedFqScmRef(new ScmRef(Kind.BRANCH, branch, null),
+                    new AnnotatedScmRepository("?", "git", gitUri));
             this.delegate = cloneDirectoriesLayout
                     .lockDirectory(gitUri)
                     .chain(cloneDirectory -> GitUtils
@@ -102,7 +103,7 @@ public interface BuildReportStorage {
 
         @Override
         public Uni<BuildReport> store(BuildReport buildReport) {
-            FqScmRef scmRef = buildReport.buildRequest().buildGroup().scmRef();
+            AnnotatedFqScmRef scmRef = buildReport.buildRequest().buildGroup().scmRef();
             final String message = buildReport.reproducibility() + ": " + scmRef.repository().uri() + "#"
                     + scmRef.scmRef().name();
             return delegate
@@ -120,7 +121,7 @@ public interface BuildReportStorage {
         }
 
         @Override
-        public Multi<BuildReport> list(FqScmRef fqScmRef) {
+        public Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef) {
             return delegate.chain(gitFsStorage -> Uni.createFrom()
                     .item(() -> {
                         GitUtils.assertSuccess(GitUtils.rebase(gitFsStorage.git, remote.repository().uri()));
@@ -172,7 +173,7 @@ public interface BuildReportStorage {
         }
 
         @SuppressWarnings("unused")
-        Uni<Path> getOrCreateReportsDirectory(FqScmRef fqScmRef) {
+        Uni<Path> getOrCreateReportsDirectory(AnnotatedFqScmRef fqScmRef) {
             Path result = reportsDirectory.resolve(GitUtils.uriToFileName(fqScmRef.repository().uri()))
                     .resolve(fqScmRef.scmRef().name());
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
@@ -212,7 +213,7 @@ public interface BuildReportStorage {
         }
 
         @Override
-        public Multi<BuildReport> list(FqScmRef fqScmRef) {
+        public Multi<BuildReport> list(AnnotatedFqScmRef fqScmRef) {
             return getOrCreateReportsDirectory(fqScmRef)
                     .onItem().transformToMulti(reportsDir -> {
                         return fileSystem.readDir(reportsDir.toString())

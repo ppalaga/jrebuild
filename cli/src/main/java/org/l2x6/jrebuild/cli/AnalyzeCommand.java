@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
@@ -148,7 +148,7 @@ public class AnalyzeCommand implements Runnable {
 
                 /* Now merge the list of SCM trees into a single tree under a a virtual root node */
                 final ScmInfoNode.Builder forest = ScmInfoNode
-                        .builder(new BuildGroup.Builder(FqScmRef.createUnknown(Gav.of("root:root:0.0.0"))));
+                        .builder(new BuildGroup.Builder(AnnotatedFqScmRef.createUnknown(Gav.of("root:root:0.0.0"))));
                 for (ScmInfoNode root : roots) {
                     log.infof("Merging " + root);
                     forest.adopt(root.builder());

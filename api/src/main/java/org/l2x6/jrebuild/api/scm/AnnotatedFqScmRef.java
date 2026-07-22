@@ -7,24 +7,24 @@ package org.l2x6.jrebuild.api.scm;
 import java.util.Objects;
 import org.l2x6.pom.tuner.model.Gav;
 
-public record FqScmRef(ScmRef scmRef, AnnotatedScmRepository repository, String failureMessage) {
+public record AnnotatedFqScmRef(ScmRef scmRef, AnnotatedScmRepository repository, String failureMessage) {
 
-    public FqScmRef(ScmRef scmRef, AnnotatedScmRepository repository) {
+    public AnnotatedFqScmRef(ScmRef scmRef, AnnotatedScmRepository repository) {
         this(scmRef, repository, null);
     }
 
-    public FqScmRef(ScmRef scmRef, AnnotatedScmRepository repository, String failureMessage) {
+    public AnnotatedFqScmRef(ScmRef scmRef, AnnotatedScmRepository repository, String failureMessage) {
         this.scmRef = Objects.requireNonNull(scmRef);
         this.repository = Objects.requireNonNull(repository);
         this.failureMessage = failureMessage;
     }
 
-    public static FqScmRef createUnknown(Gav gav) {
-        return new FqScmRef(ScmRef.createUnknown(gav.getVersion()), AnnotatedScmRepository.createUnknown(gav));
+    public static AnnotatedFqScmRef createUnknown(Gav gav) {
+        return new AnnotatedFqScmRef(ScmRef.createUnknown(gav.getVersion()), AnnotatedScmRepository.createUnknown(gav));
     }
 
-    public static FqScmRef createFailed(String version, AnnotatedScmRepository repository, String failureMessage) {
-        return new FqScmRef(ScmRef.createFailed(version), repository, failureMessage);
+    public static AnnotatedFqScmRef createFailed(String version, AnnotatedScmRepository repository, String failureMessage) {
+        return new AnnotatedFqScmRef(ScmRef.createFailed(version), repository, failureMessage);
     }
 
     public boolean isUnknownOrFailed() {

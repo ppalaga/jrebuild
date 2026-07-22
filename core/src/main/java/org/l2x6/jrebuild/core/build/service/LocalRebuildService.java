@@ -21,8 +21,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.os.Tool.InstalledTool;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.common.CommonUtils;
 import org.l2x6.jrebuild.common.StackTraceLessException;
 import org.l2x6.jrebuild.common.git.GitUtils;
@@ -97,7 +97,7 @@ public record LocalRebuildService(
             ReferenceMavenRepository referenceMavenRepository,
             Clock clock) {
         ZonedDateTime ts = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC));
-        final FqScmRef scmRef = buildRequest.buildGroup().scmRef();
+        final AnnotatedFqScmRef scmRef = buildRequest.buildGroup().scmRef();
         final AnnotatedScmRepository repo = scmRef.repository();
         if (!repo.isGit()) {
             return Uni.createFrom()

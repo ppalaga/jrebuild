@@ -21,8 +21,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef;
@@ -51,7 +51,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
         this.recipeGroupManager = RecipeGroupManager.of(gitCloneBaseDir, recipeRepos);
     }
 
-    public List<FqScmRef> locate(Gav gav) {
+    public List<AnnotatedFqScmRef> locate(Gav gav) {
         final List<RecipeFile> recipes = recipeGroupManager.lookupScmInformation(gav);
         if (recipes.isEmpty()) {
             return List.of();
@@ -76,7 +76,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
             }
         }
 
-        final List<FqScmRef> result = new ArrayList<>();
+        final List<AnnotatedFqScmRef> result = new ArrayList<>();
         for (RepositoryInfo repositoryInfo : repos) {
             final String type = repositoryInfo.getType();
             final AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, type == null ? "git" : type,
@@ -87,7 +87,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
                 final Result<Map<String, String>, String> tagsToHashResult = scmLookup.getRefs(uri, Kind.TAG);
                 final String version = gav.getVersion();
                 if (tagsToHashResult.isFailure()) {
-                    result.add(FqScmRef.createFailed(version, uri, tagsToHashResult.failure()));
+                    result.add(AnnotatedFqScmRef.createFailed(version, uri, tagsToHashResult.failure()));
                 } else {
                     Map<String, String> tagsToHash = tagsToHashResult.result();
                     for (TagMapping mapping : allMappings) {
@@ -100,10 +100,10 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
                             }
                             final String sha = tagsToHash.get(tagTemplate);
                             if (sha != null) {
-                                return List.of(new FqScmRef(new ScmRef(Kind.TAG, tagTemplate, sha), uri));
+                                return List.of(new AnnotatedFqScmRef(new ScmRef(Kind.TAG, tagTemplate, sha), uri));
                             }
                             if (isSha1(tagTemplate)) {
-                                return List.of(new FqScmRef(new ScmRef(Kind.COMMIT, tagTemplate, tagTemplate),
+                                return List.of(new AnnotatedFqScmRef(new ScmRef(Kind.COMMIT, tagTemplate, tagTemplate),
                                         uri));
                             }
                         } else {
@@ -112,9 +112,10 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
                     }
                     ScmRef ref = guessTag(uri, gav, tagsToHash);
                     if (ref != null) {
-                        return List.of(new FqScmRef(ref, uri));
+                        return List.of(new AnnotatedFqScmRef(ref, uri));
                     }
-                    result.add(FqScmRef.createFailed(version, uri, "Tag not found for version " + version + " in " + uri));
+                    result.add(AnnotatedFqScmRef.createFailed(version, uri,
+                            "Tag not found for version " + version + " in " + uri));
                 }
             } catch (Exception e) {
                 final StringWriter sw = new StringWriter();
@@ -123,7 +124,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
                 try (PrintWriter pw = new PrintWriter(sw)) {
                     e.printStackTrace(pw);
                 }
-                result.add(FqScmRef.createFailed(gav.getVersion(), uri, sw.toString()));
+                result.add(AnnotatedFqScmRef.createFailed(gav.getVersion(), uri, sw.toString()));
             }
         }
         return Collections.unmodifiableList(result);

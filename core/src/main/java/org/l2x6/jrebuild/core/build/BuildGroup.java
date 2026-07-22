@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
 import org.l2x6.jrebuild.core.jackson.Serializers;
@@ -31,12 +31,12 @@ import org.l2x6.pom.tuner.model.Gavtc;
 import org.l2x6.pom.tuner.model.OptionalWithDefault;
 
 public record BuildGroup(
-        FqScmRef scmRef,
+        AnnotatedFqScmRef scmRef,
         @JsonSerialize(contentUsing = Serializers.GavtcSerializer.class) @JsonDeserialize(
                 contentUsing = Serializers.GavtcDeserializer.class) Set<Gavtc> artifacts,
         @JsonIgnore int hashCode_) {
 
-    public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts, int hashCode_) {
+    public BuildGroup(AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts, int hashCode_) {
         this.scmRef = Objects.requireNonNull(scmRef);
         this.artifacts = JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts));
         if (hashCode_ == 0) {
@@ -45,20 +45,20 @@ public record BuildGroup(
         this.hashCode_ = hashCode_;
     }
 
-    public BuildGroup(FqScmRef scmRef, Set<Gavtc> artifacts) {
+    public BuildGroup(AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts) {
         this(Objects.requireNonNull(scmRef), JrebuildUtils.assertImmutable(Objects.requireNonNull(artifacts)),
                 31 * scmRef.hashCode() + artifacts.hashCode());
     }
 
     @JsonCreator
     static BuildGroup fromJson(
-            @JsonProperty("scmRef") FqScmRef scmRef,
+            @JsonProperty("scmRef") AnnotatedFqScmRef scmRef,
             @JsonProperty("artifacts") Set<Gavtc> artifacts) {
         Set<Gavtc> immutable = Set.copyOf(artifacts);
         return new BuildGroup(scmRef, immutable, 31 * scmRef.hashCode() + immutable.hashCode());
     }
 
-    public static Builder builder(FqScmRef scmRef) {
+    public static Builder builder(AnnotatedFqScmRef scmRef) {
         return new Builder(scmRef);
     }
 
@@ -161,7 +161,7 @@ public record BuildGroup(
         return append(new StringBuilder(), scmRef, artifacts).toString();
     }
 
-    public static StringBuilder append(StringBuilder sb, FqScmRef scmRef, Set<Gavtc> artifacts) {
+    public static StringBuilder append(StringBuilder sb, AnnotatedFqScmRef scmRef, Set<Gavtc> artifacts) {
         sb.append(scmRef);
         if (artifacts.isEmpty()) {
             sb.append(" []");
@@ -195,15 +195,15 @@ public record BuildGroup(
     }
 
     public static class Builder {
-        private final FqScmRef scmRef;
+        private final AnnotatedFqScmRef scmRef;
         private final SortedSet<Gavtc> artifacts;
 
-        public Builder(FqScmRef scmRef) {
+        public Builder(AnnotatedFqScmRef scmRef) {
             this.scmRef = scmRef;
             this.artifacts = new TreeSet<>(Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
         }
 
-        public FqScmRef scmRef() {
+        public AnnotatedFqScmRef scmRef() {
             return scmRef;
         }
 

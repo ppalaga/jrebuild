@@ -12,8 +12,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
@@ -41,15 +41,15 @@ public class ReproducibleCentralScmLocator extends AbstractScmLocator {
         this.buildspecRepositories = Collections.unmodifiableList(result);
     }
 
-    public List<FqScmRef> locate(Gav gav) {
-        List<FqScmRef> result = new ArrayList<>();
+    public List<AnnotatedFqScmRef> locate(Gav gav) {
+        List<AnnotatedFqScmRef> result = new ArrayList<>();
         for (BuildspecRepository repo : buildspecRepositories) {
             Buildspec recipe = repo.lookup(gav);
             if (recipe != null) {
                 AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, "git", recipe.gitRepo());
                 try {
                     String tag = recipe.gitTag();
-                    FqScmRef ref = validateTag(uri, tag, gav.getVersion());
+                    AnnotatedFqScmRef ref = validateTag(uri, tag, gav.getVersion());
                     if (ref.isFailed()) {
                         result.add(ref);
                     } else {
@@ -65,7 +65,7 @@ public class ReproducibleCentralScmLocator extends AbstractScmLocator {
                     try (PrintWriter pw = new PrintWriter(sw)) {
                         e.printStackTrace(pw);
                     }
-                    result.add(FqScmRef.createFailed(gav.getVersion(), uri, sw.toString()));
+                    result.add(AnnotatedFqScmRef.createFailed(gav.getVersion(), uri, sw.toString()));
                 }
             }
         }

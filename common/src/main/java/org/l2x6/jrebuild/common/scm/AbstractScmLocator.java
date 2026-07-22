@@ -9,8 +9,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
@@ -72,12 +72,12 @@ public abstract class AbstractScmLocator implements ScmLocator {
         return null;
     }
 
-    protected FqScmRef validateTag(AnnotatedScmRepository url, String tag, String version) {
+    protected AnnotatedFqScmRef validateTag(AnnotatedScmRepository url, String tag, String version) {
         final Kind kind = Kind.TAG;
         final Result<String, String> rev = scmLookup.getRevision(url, kind, tag);
         return rev.reduce(
-                commitId -> (FqScmRef) new FqScmRef(new ScmRef(kind, tag, commitId), url),
-                failure -> (FqScmRef) FqScmRef.createFailed(version, url, failure));
+                commitId -> (AnnotatedFqScmRef) new AnnotatedFqScmRef(new ScmRef(kind, tag, commitId), url),
+                failure -> (AnnotatedFqScmRef) AnnotatedFqScmRef.createFailed(version, url, failure));
     }
 
     protected boolean isSha1(String revision) {

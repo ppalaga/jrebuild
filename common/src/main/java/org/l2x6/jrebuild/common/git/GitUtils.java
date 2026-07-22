@@ -32,8 +32,8 @@ import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.RemoteRefUpdate.Status;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 
@@ -53,7 +53,7 @@ public class GitUtils {
      * @return
      */
     public static Git cloneOrFetchAndReset(
-            FqScmRef fqScmRef,
+            AnnotatedFqScmRef fqScmRef,
             Path directory,
             int depth) {
         if (!fqScmRef.repository().isGit()) {
@@ -87,7 +87,7 @@ public class GitUtils {
     }
 
     public static Uni<Git> cloneOrFetchAndResetAsync(
-            FqScmRef fqScmRef,
+            AnnotatedFqScmRef fqScmRef,
             Path directory,
             int depth) {
         return Uni.createFrom().item(() -> cloneOrFetchAndReset(fqScmRef, directory, depth))
@@ -99,7 +99,7 @@ public class GitUtils {
             String branch,
             Path directory,
             int depth) {
-        FqScmRef fqScmRef = new FqScmRef(new ScmRef(Kind.BRANCH, branch, null),
+        AnnotatedFqScmRef fqScmRef = new AnnotatedFqScmRef(new ScmRef(Kind.BRANCH, branch, null),
                 new AnnotatedScmRepository("?", "git", remoteUri));
         return cloneOrFetchAndReset(fqScmRef, directory, depth);
     }
@@ -118,7 +118,7 @@ public class GitUtils {
         }
     }
 
-    static String fetchAndReset(FqScmRef fqScmRef, Git git) {
+    static String fetchAndReset(AnnotatedFqScmRef fqScmRef, Git git) {
         final Path dir = git.getRepository().getWorkTree().toPath();
         /* Forget local changes */
         try {

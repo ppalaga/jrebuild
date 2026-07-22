@@ -2,8 +2,8 @@ package org.l2x6.jrebuild.core.build.service;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.core.build.BuildGroup;
@@ -18,7 +18,7 @@ public class FindReferenceArtifactsServiceTest {
         try (TestEnvironment testEnvironment = new TestEnvironment(getClass(), RemoteRepository.CENTRAL)) {
             FindReferenceArtifactsService findService = testEnvironment.getFindReferenceArtifactsService();
             BuildGroup bg = findService.findPublishedArtifacts(
-                    new FqScmRef(
+                    new AnnotatedFqScmRef(
                             new ScmRef(Kind.TAG, "4.10.0", null),
                             new AnnotatedScmRepository("?", "git", "https://github.com/l2x6/pom-tuner.git")),
                     SourceRootDirectories.root())

@@ -5,8 +5,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.os.OsArch;
 import org.l2x6.jrebuild.api.os.Tool;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.core.build.BuildGroup;
@@ -28,7 +28,7 @@ public class LocalRebuildServiceTest {
 
             BuildReportStorage storage = testEnv.getBuildReportStorage();
 
-            FqScmRef fqScmRef = new FqScmRef(
+            AnnotatedFqScmRef fqScmRef = new AnnotatedFqScmRef(
                     new ScmRef(Kind.TAG, "4.10.0", null),
                     new AnnotatedScmRepository("?", "git", "https://github.com/l2x6/pom-tuner.git"));
             BuildGroup bg = findService.findPublishedArtifacts(

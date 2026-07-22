@@ -22,8 +22,8 @@ import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
@@ -81,11 +81,11 @@ class DominoBuildRecipesScmLocatorTest {
 
     @Test
     void lookupScmInfoRelaxNG() {
-        List<FqScmRef> result = new DominoBuildRecipesScmLocator(gitRepoCloneDir, List.of(gitRepoUri),
+        List<AnnotatedFqScmRef> result = new DominoBuildRecipesScmLocator(gitRepoCloneDir, List.of(gitRepoUri),
                 new MutableRemoteScmLookup("git"))
                 .locate(Gav.of("relaxngDatatype:relaxngDatatype:20020414"));
         org.assertj.core.api.Assertions.assertThat(result).hasSize(1);
-        final FqScmRef tag = result.get(0);
+        final AnnotatedFqScmRef tag = result.get(0);
         Assertions.assertEquals(tag.scmRef().kind(), Kind.COMMIT);
         Assertions.assertEquals(tag.scmRef().name(), tag.scmRef().revision());
         Assertions.assertEquals(tag.repository().uri(),
@@ -98,9 +98,9 @@ class DominoBuildRecipesScmLocatorTest {
     }
 
     private void assertCommonsTag(DominoBuildRecipesScmLocator locator) {
-        List<FqScmRef> result = locator.locate(Gav.of("commons-lang:commons-lang:2.5"));
+        List<AnnotatedFqScmRef> result = locator.locate(Gav.of("commons-lang:commons-lang:2.5"));
         org.assertj.core.api.Assertions.assertThat(result).hasSize(1);
-        final FqScmRef tag = result.get(0);
+        final AnnotatedFqScmRef tag = result.get(0);
         Assertions.assertNotNull(tag);
         Assertions.assertEquals(tag.scmRef().kind(), Kind.TAG);
         Assertions.assertEquals(tag.scmRef().name(), "LANG_2_5");

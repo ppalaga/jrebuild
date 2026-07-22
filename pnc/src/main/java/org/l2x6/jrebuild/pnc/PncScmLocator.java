@@ -24,8 +24,8 @@ import org.jboss.logging.Logger;
 import org.jboss.pnc.dto.Artifact;
 import org.jboss.pnc.dto.Build;
 import org.jboss.pnc.dto.response.ArtifactInfo;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.util.ComparableVersion;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
@@ -38,7 +38,7 @@ public class PncScmLocator extends AbstractScmLocator {
     private static final String SOURCE = "♖";
     private final boolean includeTemporaryVersions;
     private final CachingArtifactEndpointClient artifactEndpoint;
-    private final Map<Gav, List<FqScmRef>> cache = new ConcurrentHashMap<>();
+    private final Map<Gav, List<AnnotatedFqScmRef>> cache = new ConcurrentHashMap<>();
 
     public PncScmLocator(
             Path cacheDir,
@@ -118,7 +118,7 @@ public class PncScmLocator extends AbstractScmLocator {
                 .orElse(null);
     }
 
-    public List<FqScmRef> locate(Gav gav) {
+    public List<AnnotatedFqScmRef> locate(Gav gav) {
         return cache.computeIfAbsent(gav, k -> {
             Gavtc pomGav = k.toGavtc(Type.pom(), null);
             Optional<ComparableArtifactInfo> latestBuiltArtifact = latestBuiltArtifact(pomGav);
@@ -133,7 +133,7 @@ public class PncScmLocator extends AbstractScmLocator {
                     AnnotatedScmRepository repo = new AnnotatedScmRepository(SOURCE, "git", externalUrl);
                     String tag = build.getBuildConfigRevision().getScmRevision();
                     log.debugf("Validating tag from PNC for %s: %s#%s", latestArtifactInfo.getIdentifier(), repo, tag);
-                    FqScmRef ref = validateTag(repo, tag, k.getVersion());
+                    AnnotatedFqScmRef ref = validateTag(repo, tag, k.getVersion());
                     return List.of(ref);
                 }
             }

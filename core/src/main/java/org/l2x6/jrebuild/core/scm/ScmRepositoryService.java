@@ -24,8 +24,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.maven.model.Model;
 import org.jboss.logging.Logger;
+import org.l2x6.jrebuild.api.scm.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.AnnotatedScmRepository;
-import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmLocator;
 import org.l2x6.jrebuild.api.util.Ebnfizer;
@@ -44,7 +44,7 @@ import org.l2x6.pom.tuner.model.Gavtc;
 
 public class ScmRepositoryService {
     private static final Logger log = Logger.getLogger(ScmRepositoryService.class);
-    private final Map<Gav, FqScmRef> cachedScmInfos = new ConcurrentHashMap<>();
+    private final Map<Gav, AnnotatedFqScmRef> cachedScmInfos = new ConcurrentHashMap<>();
     private final List<ScmLocator> scmLocators;
 
     public static ScmRepositoryService create(
@@ -74,11 +74,11 @@ public class ScmRepositoryService {
         this.scmLocators = scmLocators;
     }
 
-    public FqScmRef locate(Gav gav, Deque<Builder> stack) {
+    public AnnotatedFqScmRef locate(Gav gav, Deque<Builder> stack) {
         return cachedScmInfos.computeIfAbsent(gav, k -> {
-            final List<FqScmRef> failures = new ArrayList<>();
+            final List<AnnotatedFqScmRef> failures = new ArrayList<>();
             for (ScmLocator scmLocator : scmLocators) {
-                for (FqScmRef scmRef : scmLocator.locate(gav)) {
+                for (AnnotatedFqScmRef scmRef : scmLocator.locate(gav)) {
                     if (scmRef.isFailed()) {
                         failures.add(scmRef);
                     } else if (scmRef.isUnknown()) {
@@ -90,7 +90,8 @@ public class ScmRepositoryService {
                 }
             }
             if (!failures.isEmpty()) {
-                final String shortMessage = new Ebnfizer().add(failures.stream().map(FqScmRef::failureMessage)).toString();
+                final String shortMessage = new Ebnfizer().add(failures.stream().map(AnnotatedFqScmRef::failureMessage))
+                        .toString();
                 final StringBuilder failureMessages = new StringBuilder(shortMessage);
                 final Iterator<Builder> it = stack.iterator();
                 if (it.hasNext()) {
@@ -109,12 +110,12 @@ public class ScmRepositoryService {
                 }
                 final String msg = failureMessages.toString();
                 log.warn(msg);
-                return FqScmRef.createFailed(
+                return AnnotatedFqScmRef.createFailed(
                         gav.getVersion(),
-                        AnnotatedScmRepository.createFailed(failures.stream().map(FqScmRef::repository).toList()),
+                        AnnotatedScmRepository.createFailed(failures.stream().map(AnnotatedFqScmRef::repository).toList()),
                         shortMessage);
             }
-            return FqScmRef.createUnknown(gav);
+            return AnnotatedFqScmRef.createUnknown(gav);
         });
     }
 
@@ -124,11 +125,11 @@ public class ScmRepositoryService {
 
     public static class ScmRepositoryLocatorVisitor implements Visitor<ResolvedArtifactNode, ScmRepositoryLocatorVisitor> {
 
-        private final BiFunction<Gav, Deque<ScmInfoNode.Builder>, FqScmRef> locate;
+        private final BiFunction<Gav, Deque<ScmInfoNode.Builder>, AnnotatedFqScmRef> locate;
         private final Deque<ScmInfoNode.Builder> stack = new ArrayDeque<>();
         private ScmInfoNode.Builder rootNode;
 
-        public ScmRepositoryLocatorVisitor(BiFunction<Gav, Deque<Builder>, FqScmRef> locate) {
+        public ScmRepositoryLocatorVisitor(BiFunction<Gav, Deque<Builder>, AnnotatedFqScmRef> locate) {
             super();
             this.locate = locate;
         }
@@ -137,7 +138,7 @@ public class ScmRepositoryService {
         public boolean enter(ResolvedArtifactNode node) {
             Gavtc gavtc = node.gavtc();
             Gav gav = gavtc.toGav();
-            FqScmRef scmRef = locate.apply(gav, stack);
+            AnnotatedFqScmRef scmRef = locate.apply(gav, stack);
             if (stack.isEmpty()) {
                 ScmInfoNode.Builder newNode = ScmInfoNode.builder(BuildGroup.builder(scmRef).artifact(gavtc));
                 stack.push(newNode);
@@ -226,14 +227,15 @@ public class ScmRepositoryService {
 
         public static class Builder implements Node<Builder> {
             private final BuildGroup.Builder buildGroup;
-            private IndexedCollection<FqScmRef, Builder> children = IndexedCollection.linked(b -> b.buildGroup.scmRef(),
+            private IndexedCollection<AnnotatedFqScmRef, Builder> children = IndexedCollection.linked(
+                    b -> b.buildGroup.scmRef(),
                     (Builder b1, Builder b2) -> b1.merge(b2));
 
             public Builder(BuildGroup.Builder buildGroup) {
                 this.buildGroup = Objects.requireNonNull(buildGroup);
             }
 
-            public Builder getOrAddChildBuilder(FqScmRef scmRef) {
+            public Builder getOrAddChildBuilder(AnnotatedFqScmRef scmRef) {
                 return children.computeIfAbsent(scmRef, k -> new Builder(BuildGroup.builder(scmRef)));
             }
 
