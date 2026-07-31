@@ -66,6 +66,21 @@ public class FindReferenceArtifactsService {
                         .eventually(cloneDir::close) //
                 );
 
+        return verifyArtifacts(fqScmRef, sourceTreeGavs);
+
+    }
+
+    public Uni<BuildGroup<FqScmRef>> findPublishedArtifacts(FqScmRef scmRef, Function<Path, List<Path>> roots,
+            CloneDirectory cloneDirectory) {
+        Path dir = cloneDirectoriesLayout.assertLocked(cloneDirectory);
+        Uni<Set<Gav>> sourceTreeGavs = Uni.createFrom()
+                .item(() -> listModules(dir, roots))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+
+        return verifyArtifacts(scmRef, sourceTreeGavs);
+    }
+
+    Uni<BuildGroup<FqScmRef>> verifyArtifacts(FqScmRef fqScmRef, Uni<Set<Gav>> sourceTreeGavs) {
         return sourceTreeGavs.onItem()
                 .transformToUni((Set<Gav> gavs) -> Multi.createFrom().iterable(gavs)
                         .onItem()
@@ -80,7 +95,6 @@ public class FindReferenceArtifactsService {
                             publishedGavtcs.forEach(result::artifacts);
                             return result.build();
                         }));
-
     }
 
     Set<Gav> cloneAndList(FqScmRef fqScmRef, Function<Path, List<Path>> sourceRootDirectories,

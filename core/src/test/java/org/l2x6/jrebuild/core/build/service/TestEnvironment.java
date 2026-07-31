@@ -3,6 +3,7 @@ package org.l2x6.jrebuild.core.build.service;
 import io.vertx.core.http.HttpServer;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
+import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.HexFormat;
 import java.util.concurrent.ExecutionException;
 import org.assertj.core.api.Assertions;
 import org.l2x6.jrebuild.core.maven.DeployDirectoriesLayout;
+import org.l2x6.jrebuild.core.maven.MavenVersionsService;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -53,6 +55,9 @@ public class TestEnvironment implements AutoCloseable {
     private final Path buildReportsDir;
     private BuildReportStorage buildReportStorage;
     private DeployDirectoriesLayout deployDirectoriesLayout;
+    private GuessBuildRequestService guessBuildRequestService;
+    private MavenVersionsService mavenVersionsService;
+    private FoojayDiscoService foojayDiscoService;
 
     public TestEnvironment(Class<?> testClass, RemoteRepository remoteRepository) {
         String testName = testClass.getSimpleName();
@@ -293,5 +298,40 @@ public class TestEnvironment implements AutoCloseable {
             localToolService = new LocalToolService(toolsDir);
         }
         return localToolService;
+    }
+
+    public FileSystem fileSystem() {
+        return vertx.fileSystem();
+    }
+
+    public Vertx vertx() {
+        return vertx;
+    }
+
+    public GuessBuildRequestService getGuessBuildRequestService() {
+        if (guessBuildRequestService == null) {
+            guessBuildRequestService = new GuessBuildRequestService(
+                    fileSystem(),
+                    getCloneDirectoriesLayout(),
+                    getReferenceMavenRepository(),
+                    getMavenVersionsService(),
+                    getFindReferenceArtifactsService(),
+                    getFoojayDiscoService());
+        }
+        return guessBuildRequestService;
+    }
+
+    private FoojayDiscoService getFoojayDiscoService() {
+        if (foojayDiscoService == null) {
+            foojayDiscoService = new FoojayDiscoService();
+        }
+        return foojayDiscoService;
+    }
+
+    public MavenVersionsService getMavenVersionsService() {
+        if (mavenVersionsService == null) {
+            mavenVersionsService = new MavenVersionsService(vertx);
+        }
+        return mavenVersionsService;
     }
 }

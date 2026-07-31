@@ -1,6 +1,7 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild
+ *                                 project contributors as indicated by the @author tags
+ *                                 SPDX-License-Identifier: Apache-2.0
  */
 package org.l2x6.jrebuild.core.scm;
 
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -50,8 +52,17 @@ public class CloneDirectoriesLayout {
         try {
             lockFile = FileChannel.open(locksFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
             for (int i = 0; i <= Integer.MAX_VALUE; i++) {
-                FileLock fileLock = lockFile.tryLock(i, 1, false);
-                if (fileLock != null) {
+                FileLock fileLock = null;
+                try {
+                    fileLock = lockFile.tryLock(i, 1, false);
+                } catch (OverlappingFileLockException e) {
+                    /* This JMV already holds the lock
+                     * Try locking next */
+
+                }
+                if (fileLock == null) {
+                    // log.info("Could not lock position " + i + " of " + lockFile);
+                } else {
                     Path lockedDir = groupDir.resolve(String.valueOf(i));
                     if (localLocks.add(lockedDir)) {
                         try {
@@ -101,5 +112,13 @@ public class CloneDirectoriesLayout {
             }
         }
 
+    }
+
+    public Path assertLocked(CloneDirectory cloneDirectory) {
+        Path dir = cloneDirectory.cloneDirectory();
+        if (!localLocks.contains(dir)) {
+            throw new IllegalStateException(dir + " is not locked");
+        }
+        return dir;
     }
 }
