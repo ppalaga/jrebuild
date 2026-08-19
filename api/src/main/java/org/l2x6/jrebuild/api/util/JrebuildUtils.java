@@ -1,6 +1,7 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild
+ *                                 project contributors as indicated by the @author tags
+ *                                 SPDX-License-Identifier: Apache-2.0
  */
 package org.l2x6.jrebuild.api.util;
 
@@ -113,4 +114,11 @@ public class JrebuildUtils {
                 t -> t).map(StringTokenizer::nextToken);
     }
 
+    public static boolean contains(byte[] array, byte value) {
+        for (byte b : array) {
+            if (b == value)
+                return true;
+        }
+        return false;
+    }
 }

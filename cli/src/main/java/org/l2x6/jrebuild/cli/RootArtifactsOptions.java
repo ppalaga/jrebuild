@@ -1,6 +1,7 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild
+ *                                 project contributors as indicated by the @author tags
+ *                                 SPDX-License-Identifier: Apache-2.0
  */
 package org.l2x6.jrebuild.cli;
 
@@ -19,7 +20,7 @@ import org.l2x6.pom.tuner.model.GavtcsSet;
 import picocli.CommandLine;
 import picocli.CommandLine.ITypeConverter;
 
-public class RootArtifactsOptions extends BaseOptions {
+public class RootArtifactsOptions extends ProjectDirOptions {
     @CommandLine.Option(names = {
             "--bom" },
             description = "BOM in format groupId:artifactId:version whose constraints should be used as top level artifacts to be built",

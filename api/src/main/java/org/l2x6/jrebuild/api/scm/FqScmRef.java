@@ -1,16 +1,37 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild
+ *                                 project contributors as indicated by the @author tags
+ *                                 SPDX-License-Identifier: Apache-2.0
  */
 package org.l2x6.jrebuild.api.scm;
 
 import java.util.Objects;
+import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.pom.tuner.model.Gav;
 
 public interface FqScmRef {
 
     static FqScmRef of(ScmRef scmRef, ScmRepository repository) {
         return new FqScmRefRecord(scmRef, repository);
+    }
+
+    static FqScmRef of(String rawScmRef) {
+        ScmRepositoryType type = ScmRepositoryType.git;
+        for (ScmRepositoryType t : ScmRepositoryType.values()) {
+            if (rawScmRef.startsWith(t.name() + ":")) {
+                type = t;
+                rawScmRef = rawScmRef.substring(t.name().length() + 1);
+                break;
+            }
+        }
+        int hashPos = rawScmRef.lastIndexOf('#');
+        if (hashPos < 0) {
+            throw new IllegalArgumentException(FqScmRef.class.getSimpleName() + " must end with #<tag>; found " + rawScmRef);
+        }
+        final String tag = rawScmRef.substring(hashPos + 1);
+        final String uri = rawScmRef.substring(0, hashPos);
+        return FqScmRef.of(new ScmRef(Kind.TAG, tag, null), ScmRepository.of(type, uri));
     }
 
     ScmRef scmRef();

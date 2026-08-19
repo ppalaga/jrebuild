@@ -1,6 +1,7 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild
+ *                                 project contributors as indicated by the @author tags
+ *                                 SPDX-License-Identifier: Apache-2.0
  */
 package org.l2x6.jrebuild.cli;
 
@@ -84,7 +85,7 @@ public class AnalyzeCommand implements Runnable {
         final Path lsRemotesCache = cacheDir.resolve("ls-remotes-cache.txt");
 
         if (rawMinRetievalTime == null) {
-            minRetievalTime = BaseOptions.defaultMinRetrievalTime("ls-remotes-older-than", cacheDir);
+            minRetievalTime = ProjectDirOptions.defaultMinRetrievalTime("ls-remotes-older-than", cacheDir);
         } else if ("now".equals(rawMinRetievalTime)) {
             minRetievalTime = Instant.now();
         } else {
