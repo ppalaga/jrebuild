@@ -1,3 +1,7 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.l2x6.jrebuild.core.build.service;
 
 import io.smallrye.mutiny.Multi;
@@ -222,6 +226,7 @@ public record GuessBuildRequestService(
                             }
                         }
                     } catch (IOException e) {
+                        // FIXME: missing "not" — should be "Could not extract"
                         throw new UncheckedIOException("Could extract " + path + " from " + jarFile, e);
                     }
                 })
@@ -433,6 +438,7 @@ public record GuessBuildRequestService(
             return Uni.combine()
                     .all().unis(buildTools, javaDistros).asTuple()
                     .onItem().transform(tuple -> {
+                        // FIXME: unused variable — bts is assigned but never read; tuple.getItem1() is used directly below
                         Set<BuildToolAndVersion> bts = tuple.getItem1();
                         Os os = os();
                         Shell shell = os.defaultShell();

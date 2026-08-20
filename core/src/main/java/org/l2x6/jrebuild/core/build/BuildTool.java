@@ -1,3 +1,7 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.l2x6.jrebuild.core.build;
 
 import java.util.Optional;
@@ -7,7 +11,7 @@ import org.l2x6.jrebuild.core.build.service.LocalToolService.Sdkman;
 
 public enum BuildTool {
     maven_wrapper(true, "./mvnw"),
-    gradle_wrapper(true, ".gradlew"),
+    gradle_wrapper(true, "./gradlew"),
     maven(false, "mvn") {
         public Optional<Tool> tool(String version) {
             return Optional.of(CliAssuredPackager.maven(version));

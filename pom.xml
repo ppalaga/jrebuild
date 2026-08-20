@@ -110,7 +110,6 @@
         <!-- com.github.github:site-maven-plugin -->
         <github.global.server>github</github.global.server>
 
-        <format.skip>false</format.skip>
     </properties>
 
     <modules>
@@ -445,6 +444,9 @@
                         <licenseSet>
                             <inlineHeader>SPDX-FileCopyrightText: Copyright (c) ${project.inceptionYear} jrebuild project contributors as indicated by the @author tags
 SPDX-License-Identifier: Apache-2.0</inlineHeader>
+                            <includes>
+                                <include>**/build/**</include>
+                            </includes>
                             <excludes>
                                 <exclude>**/*.adoc</exclude>
                                 <exclude>**/*.buildspec</exclude>

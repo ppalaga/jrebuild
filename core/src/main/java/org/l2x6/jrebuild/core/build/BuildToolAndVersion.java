@@ -1,3 +1,7 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.l2x6.jrebuild.core.build;
 
 import java.util.Comparator;
@@ -10,7 +14,7 @@ public record BuildToolAndVersion(BuildTool buildTool, ComparableVersion version
             .thenComparing(BuildToolAndVersion::version, Comparator.nullsLast(Comparator.reverseOrder()));
 
     public Optional<Tool> tool() {
-        return buildTool.tool(version.toString());
+        return buildTool.tool(version == null ? null : version.toString());
     }
 
     @Override
