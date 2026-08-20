@@ -84,7 +84,7 @@ public class AnalyzeCommand implements Runnable {
         final Path lsRemotesCache = cacheDir.resolve("ls-remotes-cache.txt");
 
         if (rawMinRetievalTime == null) {
-            minRetievalTime = BaseOptions.defaultMinRetrievalTime("ls-remotes-older-than", cacheDir);
+            minRetievalTime = ProjectDirOptions.defaultMinRetrievalTime("ls-remotes-older-than", cacheDir);
         } else if ("now".equals(rawMinRetievalTime)) {
             minRetievalTime = Instant.now();
         } else {

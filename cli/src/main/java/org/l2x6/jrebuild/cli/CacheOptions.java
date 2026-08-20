@@ -16,12 +16,9 @@ import java.util.Properties;
 import org.jboss.logging.Logger;
 import picocli.CommandLine;
 
-public class BaseOptions {
-    private static final Logger log = Logger.getLogger(BaseOptions.class);
+public class CacheOptions {
+    private static final Logger log = Logger.getLogger(CacheOptions.class);
 
-    @CommandLine.Option(names = { "--project-dir" }, description = "A directory containing a source tree to analyze")
-    private Path projectDir;
-    private volatile Path projectDirResolved;
     @CommandLine.Option(names = {
             "--cache-dir" },
             description = """
@@ -31,14 +28,6 @@ public class BaseOptions {
     private Path cacheDir;
     private volatile Path cacheDirResolved;
     private volatile Path userHome;
-
-    protected Path projectDir() {
-        Path result;
-        if ((result = projectDirResolved) == null) {
-            result = projectDirResolved = resolveHome(projectDir);
-        }
-        return result;
-    }
 
     protected Path cacheDir() {
         Path result;
@@ -114,5 +103,4 @@ public class BaseOptions {
                 result, lastRunProperties);
         return result;
     }
-
 }

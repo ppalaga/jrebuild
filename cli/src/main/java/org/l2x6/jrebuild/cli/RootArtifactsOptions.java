@@ -19,7 +19,7 @@ import org.l2x6.pom.tuner.model.GavtcsSet;
 import picocli.CommandLine;
 import picocli.CommandLine.ITypeConverter;
 
-public class RootArtifactsOptions extends BaseOptions {
+public class RootArtifactsOptions extends ProjectDirOptions {
     @CommandLine.Option(names = {
             "--bom" },
             description = "BOM in format groupId:artifactId:version whose constraints should be used as top level artifacts to be built",

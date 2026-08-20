@@ -113,4 +113,11 @@ public class JrebuildUtils {
                 t -> t).map(StringTokenizer::nextToken);
     }
 
+    public static boolean contains(byte[] array, byte value) {
+        for (byte b : array) {
+            if (b == value)
+                return true;
+        }
+        return false;
+    }
 }

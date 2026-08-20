@@ -33,7 +33,7 @@ public class PncOptions {
         Instant result;
         if ((result = maxPncBuildDate) == null) {
             if (rawMaxPncBuildDate == null) {
-                result = maxPncBuildDate = BaseOptions.defaultMinRetrievalTime("pnc-builds-older-than", cacheDir);
+                result = maxPncBuildDate = ProjectDirOptions.defaultMinRetrievalTime("pnc-builds-older-than", cacheDir);
             } else if ("now".equals(rawMaxPncBuildDate)) {
                 result = maxPncBuildDate = Instant.now();
             } else {

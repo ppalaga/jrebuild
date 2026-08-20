@@ -116,7 +116,7 @@ public record LocalRebuildService(
                     String commitId = null;
                     try (Git git = GitUtils.cloneOrFetchAndReset(
                             scmRef,
-                            deployDirectory.deployDirectory(),
+                            cloneDir.cloneDirectory(),
                             1)) {
                         final Ref ref = git.getRepository().exactRef("HEAD");
                         commitId = ref.getObjectId().getName();
@@ -150,7 +150,7 @@ public record LocalRebuildService(
                     try {
                         CliAssured.command(cmd.get(0))
                                 .args(cmd.subList(1, cmd.size()))
-                                .cd(deployDirectory.deployDirectory())
+                                .cd(cloneDir.cloneDirectory())
                                 .env("PATH", pathEnvVar)
                                 .env("DEPLOYMENT_REPO", deployDirectory.deployDirectory().toUri().toString())
                                 .env(env)
@@ -204,7 +204,7 @@ public record LocalRebuildService(
                             .collect().asList()
                             .onItem().transform(artifactInfos -> {
 
-                                Map<Gavtc, ResourceMatch> builtArtifactsMap = new TreeMap<>(
+                                final Map<Gavtc, ResourceMatch> builtArtifactsMap = new TreeMap<>(
                                         Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
                                 artifactInfos.forEach(ai -> builtArtifactsMap.put(ai.gavtc, ai.resourceMatch));
 

@@ -30,3 +30,5 @@ nb-configuration.xml
 # Claude
 .claude
 **/.claude
+
+**/discoclient.properties

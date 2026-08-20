@@ -21,17 +21,39 @@ public record BuildReport(
         Reproducibility reproducibility,
         /** Reproducibility status of individual artifacts */
         /** When the build was started */
-        @JsonFormat(shape = JsonFormat.Shape.STRING,
-                pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSXXX") ZonedDateTime buildStart,
+        ZonedDateTime buildStart,
         /** How long the build took */
         Duration buildDuration,
-        @JsonSerialize(keyUsing = Serializers.GavtcKeySerializer.class) @JsonDeserialize(
-                using = Serializers.GavtcTreeMapDeserializer.class) Map<Gavtc, ResourceMatch> builtArtifacts,
+        Map<Gavtc, ResourceMatch> builtArtifacts,
         /** Can be {@code null} */
         String errorMessage) {
 
     private static Comparator<BuildReport> BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR = Comparator
             .comparing(BuildReport::reproducibility).thenComparing(BuildReport::buildStart);
+
+    public BuildReport(
+            BuildRequest buildRequest,
+            String commitId,
+            Reproducibility reproducibility,
+
+            @JsonFormat(shape = JsonFormat.Shape.STRING,
+                    pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSXXX") ZonedDateTime buildStart,
+
+            Duration buildDuration,
+
+            @JsonSerialize(keyUsing = Serializers.GavtcKeySerializer.class) @JsonDeserialize(
+                    using = Serializers.GavtcTreeMapDeserializer.class) Map<Gavtc, ResourceMatch> builtArtifacts,
+
+            String errorMessage) {
+
+        this.buildRequest = buildRequest;
+        this.commitId = commitId;
+        this.reproducibility = reproducibility;
+        this.buildStart = buildStart;
+        this.buildDuration = buildDuration;
+        this.builtArtifacts = builtArtifacts == null ? Map.of() : builtArtifacts;
+        this.errorMessage = errorMessage;
+    }
 
     public static Comparator<? super BuildReport> byBestReproducibilityAndNewestTimestamp() {
         return BY_REPRODUCIBILITY_AND_TIMESTAMP_COMPARATOR;

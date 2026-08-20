@@ -15,6 +15,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Set;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
@@ -24,7 +27,9 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.DepthWalk.RevWalk;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
@@ -36,6 +41,7 @@ import org.l2x6.jrebuild.api.scm.FqScmRef.FqScmRefRecord;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryRecord;
+import org.l2x6.jrebuild.common.StackTraceLessException;
 
 public class GitUtils {
     private static final Logger log = Logger.getLogger(GitUtils.class);
@@ -375,6 +381,19 @@ public class GitUtils {
         } catch (IOException | GitAPIException e) {
             throw new IllegalStateException("Could not rebase from " + remoteUri, e);
         }
+    }
+
+    public static Uni<ZonedDateTime> lastCommitDate(Git git) {
+        return Uni.createFrom().item(() -> {
+            Repository repo = git.getRepository();
+            try (RevWalk walk = new RevWalk(repo, 1)) {
+                ObjectId head = repo.resolve("HEAD");
+                int commitTimeSeconds = walk.parseCommit(head).getCommitTime();
+                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(commitTimeSeconds), ZoneOffset.UTC);
+            } catch (IOException e) {
+                throw new StackTraceLessException("Could not find the date of the last commit in " + repo.getWorkTree(), e);
+            }
+        });
     }
 
     static boolean pushSuccessful(Iterable<PushResult> results) {

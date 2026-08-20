@@ -3,6 +3,7 @@ package org.l2x6.jrebuild.core.build.service;
 import io.vertx.core.http.HttpServer;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
+import io.vertx.mutiny.core.file.FileSystem;
 import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import java.io.IOException;
@@ -53,6 +54,9 @@ public class TestEnvironment implements AutoCloseable {
     private final Path buildReportsDir;
     private BuildReportStorage buildReportStorage;
     private DeployDirectoriesLayout deployDirectoriesLayout;
+    private GuessBuildRequestService guessBuildRequestService;
+    private BuildToolVersionsService mavenVersionsService;
+    private FoojayDiscoService foojayDiscoService;
 
     public TestEnvironment(Class<?> testClass, RemoteRepository remoteRepository) {
         String testName = testClass.getSimpleName();
@@ -293,5 +297,40 @@ public class TestEnvironment implements AutoCloseable {
             localToolService = new LocalToolService(toolsDir);
         }
         return localToolService;
+    }
+
+    public FileSystem fileSystem() {
+        return vertx.fileSystem();
+    }
+
+    public Vertx vertx() {
+        return vertx;
+    }
+
+    public GuessBuildRequestService getGuessBuildRequestService() {
+        if (guessBuildRequestService == null) {
+            guessBuildRequestService = new GuessBuildRequestService(
+                    fileSystem(),
+                    getCloneDirectoriesLayout(),
+                    getReferenceMavenRepository(),
+                    getMavenVersionsService(),
+                    getFindReferenceArtifactsService(),
+                    getFoojayDiscoService());
+        }
+        return guessBuildRequestService;
+    }
+
+    private FoojayDiscoService getFoojayDiscoService() {
+        if (foojayDiscoService == null) {
+            foojayDiscoService = new FoojayDiscoService();
+        }
+        return foojayDiscoService;
+    }
+
+    public BuildToolVersionsService getMavenVersionsService() {
+        if (mavenVersionsService == null) {
+            mavenVersionsService = new BuildToolVersionsService(vertx);
+        }
+        return mavenVersionsService;
     }
 }

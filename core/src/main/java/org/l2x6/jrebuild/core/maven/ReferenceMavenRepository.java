@@ -22,11 +22,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HexFormat;
-import java.util.List;
-import java.util.Locale;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -91,6 +87,7 @@ public class ReferenceMavenRepository {
         this.webClient = WebClient.create(vertx);
         this.fileSystem = vertx.fileSystem();
         this.prng = VertxContextPRNG.current(vertx);
+
     }
 
     /**
@@ -174,10 +171,11 @@ public class ReferenceMavenRepository {
      * @return       a {@link Uni} that emits a {@link Gavtcf} pointing to the resolved artifact file
      */
     public Uni<Gavtcf> resolve(final Gavtc gavtc) {
+
         final String repoPath = gavtc.getRepositoryPath();
         final Path sha1Path = localReferenceMavenRepository.resolve(repoPath + ".sha1");
         final Path refArtifactPath = localReferenceMavenRepository.resolve(repoPath);
-        final Path localArtifactPath = localMavenRepository.resolve(repoPath);
+        final Path m2ArtifactPath = localMavenRepository.resolve(repoPath);
 
         /* Step 1-2: Ensure the expected SHA1 hash is available locally (download from remote if missing) */
         return ensureSha1(sha1Path, repoPath)
@@ -189,16 +187,16 @@ public class ReferenceMavenRepository {
                                 return Uni.createFrom().item(gavtc.toGavtcf(refArtifactPath));
                             }
                             /* Step 5-6: Check the local Maven repository for an artifact with a matching SHA1 */
-                            return existsAndSha1Matches(localArtifactPath, expectedSha1)
+                            return existsAndSha1Matches(m2ArtifactPath, expectedSha1)
                                     .chain(localMatches -> {
                                         if (localMatches.existsAndChecksumMatches()) {
-                                            return Uni.createFrom().item(gavtc.toGavtcf(localArtifactPath));
+                                            return Uni.createFrom().item(gavtc.toGavtcf(m2ArtifactPath));
                                         }
                                         if (!localMatches.exists()) {
-                                            Uni<Gavtcf> result = download(repoPath, localArtifactPath, expectedSha1)
-                                                    .chain(() -> updateMavenMetadata(localArtifactPath,
+                                            Uni<Gavtcf> result = download(repoPath, m2ArtifactPath, expectedSha1)
+                                                    .chain(() -> updateMavenMetadata(m2ArtifactPath,
                                                             expectedSha1))
-                                                    .map(v -> gavtc.toGavtcf(localArtifactPath));
+                                                    .map(_ -> gavtc.toGavtcf(m2ArtifactPath));
                                             /*
                                              * Step 7: Artifact is not in the local Maven repo at all —
                                              * download it there and write Maven metadata so Maven 3.9.x
@@ -216,6 +214,7 @@ public class ReferenceMavenRepository {
                                                 .map(v -> gavtc.toGavtcf(refArtifactPath));
                                     });
                         }));
+
     }
 
     static void parseBody(Gav gav, String body, Consumer<Gavtc> consumer) {
@@ -243,8 +242,9 @@ public class ReferenceMavenRepository {
     Uni<ExistsAndChecksumMatches> existsAndSha1Matches(Path path, String expectedSha1) {
         return fileSystem.exists(path.toString())
                 .chain(exists -> exists
-                        ? sha1Matches(path, expectedSha1).chain(sha1Matches -> ExistsAndChecksumMatches.of(exists, sha1Matches))
-                        : ExistsAndChecksumMatches.of(false, false));
+                        ? computeSha1(path)
+                                .map(actual -> new ExistsAndChecksumMatches(true, expectedSha1.equals(actual), actual))
+                        : ExistsAndChecksumMatches.of(false, false, null));
     }
 
     /**
@@ -298,15 +298,15 @@ public class ReferenceMavenRepository {
                 .chain(() -> fileSystem.open(tempTarget.toString(), MutinyConstants.WRITE_CREATE_OPTIONS))
                 .onItem().transformToUni(asyncFile -> {
                     final String url = referenceRepositorybaseUri + "/" + repoPath;
-                    final MessageDigest digest;
+                    final MessageDigest sha1Digest;
                     try {
-                        digest = MessageDigest.getInstance("SHA-1");
+                        sha1Digest = MessageDigest.getInstance("SHA-1");
                     } catch (NoSuchAlgorithmException e) {
                         return closeDeleteAndReturnFailure(tempTarget, asyncFile,
                                 () -> new StackTraceLessException(e.getMessage()));
                     }
                     WriteStream<Buffer> sha1Stream = WriteStream
-                            .newInstance(new DigestWriteStream(asyncFile.getDelegate(), digest));
+                            .newInstance(new DigestWriteStream(asyncFile.getDelegate(), sha1Digest));
                     return webClient.getAbs(url)
                             .as(BodyCodec.pipe(sha1Stream))
                             .send().chain(resp -> {
@@ -315,15 +315,28 @@ public class ReferenceMavenRepository {
                                             () -> new HttpStatusException(resp.statusCode(),
                                                     "Failed to download " + url + ": HTTP " + resp.statusCode()));
                                 }
-                                final String actualSha1 = HexFormat.of().formatHex(digest.digest());
+                                final String actualSha1 = HexFormat.of().formatHex(sha1Digest.digest());
                                 if (!actualSha1.equals(expectedSha1)) {
                                     return deleteAndReturnFailure(tempTarget, asyncFile,
                                             () -> new StackTraceLessException(
                                                     "SHA1 mismatch for " + url + ": expected " + expectedSha1
                                                             + " but got " + actualSha1));
                                 }
-                                return fileSystem.move(tempTarget.toString(), targetPath.toString(),
-                                        MutinyConstants.COPY_ATTRIBUTES_REPLACE_ATOMIC_NOFOLLOW);
+                                return existsAndSha1Matches(targetPath, expectedSha1)
+                                        .chain(refMatches -> {
+                                            if (refMatches.existsAndChecksumMatches()) {
+                                                /* Nothing to do: some other thread/process has written the file in between */
+                                                return Uni.createFrom().voidItem();
+                                            } else if (refMatches.exists()) {
+                                                return Uni.createFrom().failure(() -> new StackTraceLessException(targetPath
+                                                        + " with unexpected content was written by another thread or process concurrently while this thread was downloading; expected SHA1 "
+                                                        + expectedSha1 + " found " + refMatches.foundSha1()));
+                                            } else {
+                                                return fileSystem.move(tempTarget.toString(), targetPath.toString(),
+                                                        MutinyConstants.COPY_ATTRIBUTES_REPLACE_ATOMIC_NOFOLLOW);
+
+                                            }
+                                        });
                             });
                 });
     }
@@ -380,19 +393,6 @@ public class ReferenceMavenRepository {
                             + "\n";
                     return fileSystem.writeFile(remoteReposFile.toString(), Buffer.buffer(header + entry));
                 });
-    }
-
-    /**
-     * Checks whether the SHA1 hash of the given file matches the expected value.
-     *
-     * @param  file         the file to hash
-     * @param  expectedSha1 the expected 40-character hex SHA1 hash
-     * @return              a {@link Uni} emitting {@code true} if the file's SHA1 matches (case-insensitive)
-     */
-    Uni<Boolean> sha1Matches(Path file, String expectedSha1) {
-        return computeSha1(file)
-                .map(actual -> actual.equals(expectedSha1))
-                .onFailure().recoverWithItem(false);
     }
 
     /**
@@ -506,13 +506,18 @@ public class ReferenceMavenRepository {
 
     }
 
-    static record ExistsAndChecksumMatches(boolean exists, boolean checksumMatches) {
+    record ExistsAndChecksumMatches(boolean exists, boolean checksumMatches, String foundSha1) {
+
         boolean existsAndChecksumMatches() {
             return exists && checksumMatches;
         }
 
-        public static Uni<ExistsAndChecksumMatches> of(Boolean exists, Boolean sha1Matches) {
-            return Uni.createFrom().item(new ExistsAndChecksumMatches(exists, sha1Matches));
+        public static Uni<ExistsAndChecksumMatches> of(Boolean exists, Boolean sha1Matches, String foundSha1) {
+            return Uni.createFrom().item(new ExistsAndChecksumMatches(exists, sha1Matches, foundSha1));
+        }
+
+        public String foundSha1() {
+            return foundSha1;
         }
     }
 

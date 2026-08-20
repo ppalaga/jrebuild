@@ -133,6 +133,18 @@ public record BuildGroup<T extends FqScmRef>(
         }
     }
 
+    public boolean hasJavaDoc() {
+        return artifacts.stream()
+                .anyMatch(
+                        gavtc -> gavtc.getType().getValueOrDefault().equals("jar") && "javadoc".equals(gavtc.getClassifier()));
+    }
+
+    public boolean hasSources() {
+        return artifacts.stream()
+                .anyMatch(
+                        gavtc -> gavtc.getType().getValueOrDefault().equals("jar") && "sources".equals(gavtc.getClassifier()));
+    }
+
     static String longestPrefix(Collection<Gav> gavs) {
         if (gavs.isEmpty()) {
             return "";

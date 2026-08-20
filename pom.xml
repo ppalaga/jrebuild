@@ -61,11 +61,12 @@
         <cli-assured.version>0.2.0</cli-assured.version>
         <commons-compress.version>1.28.0</commons-compress.version>
         <diff-utils.version>4.16</diff-utils.version>
+        <discoclient.version>21.0.1</discoclient.version>
         <jgit.version>7.5.0.202512021534-r</jgit.version>
         <junit.version>5.13.4</junit.version>
         <maven.version>3.9.11</maven.version>
         <mima.version>2.4.35</mima.version>
-        <pom-tuner.version>5.0.0.Alpha5</pom-tuner.version>
+        <pom-tuner.version>5.0.0.Alpha6</pom-tuner.version>
         <pnc.version>3.3.1</pnc.version>
         <resolver.version>1.9.24</resolver.version>
         <quarkus.version>3.33.1</quarkus.version>
@@ -108,6 +109,8 @@
         <trimStackTrace>false</trimStackTrace>
         <!-- com.github.github:site-maven-plugin -->
         <github.global.server>github</github.global.server>
+
+        <format.skip>false</format.skip>
     </properties>
 
     <modules>
@@ -128,6 +131,13 @@
                 <version>${quarkus.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+
+            <dependency>
+                <groupId>io.foojay.api</groupId>
+                <artifactId>discoclient</artifactId>
+                <version>${discoclient.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.jboss.pnc</groupId>
@@ -550,7 +560,6 @@ SPDX-License-Identifier: Apache-2.0</inlineHeader>
                             </execution>
                         </executions>
                         <configuration>
-                            <additionalOptions>${javadoc.opts}</additionalOptions>
                             <detectOfflineLinks>false</detectOfflineLinks>
                         </configuration>
                     </plugin>
