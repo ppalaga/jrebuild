@@ -4,12 +4,20 @@
  */
 package org.l2x6.jrebuild.core.build;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Comparator;
 import java.util.Optional;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.util.ComparableVersion;
+import org.l2x6.jrebuild.core.jackson.Serializers;
 
-public record BuildToolAndVersion(BuildTool buildTool, ComparableVersion version) implements Comparable<BuildToolAndVersion> {
+public record BuildToolAndVersion(
+        BuildTool buildTool,
+        @JsonSerialize(using = Serializers.ComparableVersionSerializer.class) @JsonDeserialize(
+                using = Serializers.ComparableVersionDeserializer.class) ComparableVersion version)
+        implements
+            Comparable<BuildToolAndVersion> {
     private static final Comparator<BuildToolAndVersion> COMPARATOR = Comparator.comparing(BuildToolAndVersion::buildTool)
             .thenComparing(BuildToolAndVersion::version, Comparator.nullsLast(Comparator.reverseOrder()));
 

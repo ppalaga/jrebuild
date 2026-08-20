@@ -21,7 +21,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
-import org.l2x6.jrebuild.api.os.Shell;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
@@ -61,13 +60,12 @@ public class GuessBuildRequestServiceTest {
                     bg,
                     Os.LINUX,
                     Arch.amd64,
-                    Shell.BASH,
                     Set.of(bt),
                     Stream.of("11.0.25", "11", "8").map(ComparableVersion::new).map(JavaDistroAndVersion::temurin)
                             .collect(Collectors.toCollection(TreeSet::new)));
             Assertions.assertThat(actual).isEqualTo(expected);
 
-            String buildScript = actual.createBuildScript(bt.buildTool());
+            String buildScript = actual.createBuildScript(bt.buildTool(), Os.LINUX.defaultShell());
             Assertions.assertThat(buildScript)
                     .isEqualTo(
                             "./mvnw clean deploy -ntp -DskipTests -Dgpg.skip -DskipPublishing -Dcheckstyle.skip -Dpmd.skip deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}");

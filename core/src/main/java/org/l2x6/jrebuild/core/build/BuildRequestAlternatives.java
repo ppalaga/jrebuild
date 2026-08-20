@@ -4,16 +4,21 @@
  */
 package org.l2x6.jrebuild.core.build;
 
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.Shell;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 
-public record BuildRequestAlternatives(BuildGroup<FqScmRef> buildGroup, Os os, Arch arch, Shell shell,
-        Set<BuildToolAndVersion> buildTool, Set<JavaDistroAndVersion> java) {
+public record BuildRequestAlternatives(
+        BuildGroup<FqScmRef> buildGroup,
+        Os os,
+        Arch arch,
+        Set<BuildToolAndVersion> buildTool,
+        Set<JavaDistroAndVersion> java) {
 
-    public String createBuildScript(BuildTool bt) {
+    public String createBuildScript(BuildTool bt, Shell shell) {
 
         StringBuilder cmd = new StringBuilder(bt.command());
         if (os == Os.WINDOWS && ("mvn".equals(cmd.toString()) || "./mvnw".equals(cmd.toString()))) {

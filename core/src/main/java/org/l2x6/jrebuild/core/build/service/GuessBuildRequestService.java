@@ -16,8 +16,19 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -33,7 +44,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.eclipse.jgit.api.Git;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
-import org.l2x6.jrebuild.api.os.Shell;
 import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.util.ComparableVersion;
@@ -437,20 +447,12 @@ public record GuessBuildRequestService(
 
             return Uni.combine()
                     .all().unis(buildTools, javaDistros).asTuple()
-                    .onItem().transform(tuple -> {
-                        // FIXME: unused variable — bts is assigned but never read; tuple.getItem1() is used directly below
-                        Set<BuildToolAndVersion> bts = tuple.getItem1();
-                        Os os = os();
-                        Shell shell = os.defaultShell();
-
-                        return new BuildRequestAlternatives(
-                                buildGroup,
-                                os,
-                                arch(),
-                                shell,
-                                tuple.getItem1(),
-                                tuple.getItem2());
-                    });
+                    .onItem().transform(tuple -> new BuildRequestAlternatives(
+                            buildGroup,
+                            os(),
+                            arch(),
+                            tuple.getItem1(),
+                            tuple.getItem2()));
 
         }
 

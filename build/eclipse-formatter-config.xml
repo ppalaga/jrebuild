@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+
     SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
     SPDX-License-Identifier: Apache-2.0
+
 -->
 <profiles version="8">
     <profile name="Camel Java Conventions" version="8" kind="CodeFormatterProfile">

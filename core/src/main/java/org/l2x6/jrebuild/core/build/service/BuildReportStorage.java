@@ -4,15 +4,6 @@
  */
 package org.l2x6.jrebuild.core.build.service;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -34,15 +25,11 @@ import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildReport;
+import org.l2x6.jrebuild.core.jackson.Mapper;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout.CloneDirectory;
 
-import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR;
-import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.SPLIT_LINES;
-import static java.time.temporal.ChronoField.HOUR_OF_DAY;
-import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
-import static java.time.temporal.ChronoField.NANO_OF_SECOND;
-import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
+import static java.time.temporal.ChronoField.*;
 
 public interface BuildReportStorage {
     Uni<BuildReport> store(BuildReport buildReport);
@@ -183,19 +170,6 @@ public interface BuildReportStorage {
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
         }
 
-        private static final ObjectMapper MAPPER = JsonMapper.builder(new YAMLFactory()
-                .disable(SPLIT_LINES)
-                .enable(INDENT_ARRAYS_WITH_INDICATOR)
-                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-                // .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
-                .addModule(new JavaTimeModule())
-                .addModule(new SimpleModule()
-                        .addAbstractTypeMapping(FqScmRef.class, FqScmRef.FqScmRefRecord.class)
-                        .addAbstractTypeMapping(ScmRepository.class, ScmRepository.ScmRepositoryRecord.class))
-                .build().setDefaultPropertyInclusion(JsonInclude.Include.NON_DEFAULT);
-
         @SuppressWarnings("unused")
         @Override
         public Uni<BuildReport> store(BuildReport buildReport) {
@@ -206,7 +180,7 @@ public interface BuildReportStorage {
                             .emitOn(Infrastructure.getDefaultWorkerPool())
                             .map(pojo -> {
                                 try {
-                                    return new BytesAndFile(MAPPER.writeValueAsBytes(pojo),
+                                    return new BytesAndFile(Mapper.instance().writeValueAsBytes(pojo),
                                             buildReportDir
                                                     .resolve("build-report-" + format(buildReport.buildStart()) + ".yaml"));
                                 } catch (Exception e) {
@@ -240,7 +214,7 @@ public interface BuildReportStorage {
                                                     .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                                                     .onItem().transform(bytes2 -> {
                                                         try {
-                                                            return (BuildReport) MAPPER.readValue(bytes2, BuildReport.class);
+                                                            return Mapper.instance().readValue(bytes2, BuildReport.class);
                                                         } catch (IOException e) {
                                                             throw new UncheckedIOException(
                                                                     "Could not deserialize a BuildReport from "

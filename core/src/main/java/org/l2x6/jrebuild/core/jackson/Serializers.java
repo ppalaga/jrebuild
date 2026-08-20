@@ -19,6 +19,7 @@ import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
+import org.l2x6.jrebuild.api.util.ComparableVersion;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.pom.tuner.model.Ga;
 import org.l2x6.pom.tuner.model.Gavtc;
@@ -134,4 +135,32 @@ public class Serializers {
             return Collections.unmodifiableMap(map);
         }
     }
+
+    public static class ComparableVersionSerializer extends StdSerializer<ComparableVersion> {
+        ComparableVersionSerializer() {
+            super(ComparableVersion.class);
+        }
+
+        @Override
+        public void serialize(ComparableVersion value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeString(value.toString());
+        }
+    }
+
+    public static class ComparableVersionDeserializer extends StdDeserializer<ComparableVersion> {
+        ComparableVersionDeserializer() {
+            super(ComparableVersion.class);
+        }
+
+        @Override
+        public ComparableVersion deserialize(JsonParser p, DeserializationContext ctxt) throws JacksonException {
+            try {
+                return new ComparableVersion(p.getValueAsString());
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+    }
+
 }

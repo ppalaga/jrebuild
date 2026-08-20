@@ -7,15 +7,19 @@ package org.l2x6.jrebuild.cli;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.Vertx;
 import jakarta.inject.Inject;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
 import org.jboss.logging.Logger;
-import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
-import org.l2x6.jrebuild.core.build.BuildGroup;
-import org.l2x6.jrebuild.core.build.SourceRootDirectories;
+import org.l2x6.jrebuild.core.build.BuildRequestAlternatives;
+import org.l2x6.jrebuild.core.build.service.BuildToolVersionsService;
 import org.l2x6.jrebuild.core.build.service.FindReferenceArtifactsService;
+import org.l2x6.jrebuild.core.build.service.FoojayDiscoService;
+import org.l2x6.jrebuild.core.build.service.GuessBuildRequestService;
+import org.l2x6.jrebuild.core.jackson.Mapper;
 import org.l2x6.jrebuild.core.maven.ReferenceMavenRepository;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
 import picocli.CommandLine;
@@ -35,24 +39,31 @@ public class GuessCommand implements Runnable {
     Path m2Repo;
 
     @CommandLine.Option(names = {
-            "--ref-repo" }, description = """
+            "--ref-repo-uri" }, description = """
                     URI of the Maven repository where to look for reference artifacts. Defaults to Maven Central.
                     """, defaultValue = "https://repo1.maven.org/maven2")
     String refRepoUri;
 
     @CommandLine.Option(names = {
-            "--scm-ref" },
-            description = "A fully qualified SCM reference for which the build request should be guessed. The format is [<scm-repo-type>:]<scm-repo>#<tag>. Default <scm-repo-type> is git",
-            defaultValue = "~/.m2/buildspec")
-    String rawScmRef;
+            "--output", "-o" },
+            description = """
+                    A file path where to write the resulting array of guessed BuildRequestAlternatives. Use - to write to STDOUT.
+                    """,
+            defaultValue = "-")
+    String out;
 
-    @CommandLine.Option(names = {
-            "--source-roots" }, description = """
-                    A list of subdirectories in the source tree of the analyzed repository where the build should start.
-                    For Maven projects, these would be directories with root pom.xml files.
-                    Defaults to root directory of the source repository.
-                    """, split = ",")
-    Set<Path> sourceRoots = Set.of();
+    @CommandLine.Option(names = { "--force-output-array" },
+            description = """
+                    If present, a YAML array will be written to the output, even if only one SCM reference was specified as an input;
+                    otherwise a YAML object will be written or single SCM reference and a YAML array will be written for multiple input SCM references
+                    """,
+            defaultValue = "false", fallbackValue = "true")
+    boolean forceOutputArray;
+
+    @CommandLine.Parameters(
+            description = "One or more qualified SCM references for which the build requests should be guessed. The format is [<scm-repo-type>:]<scm-repo>#<tag>. Default <scm-repo-type> is git",
+            arity = "1..2147483647")
+    List<String> rawScmRefs;
 
     @Inject
     Vertx vertx;
@@ -63,17 +74,51 @@ public class GuessCommand implements Runnable {
     @Override
     public void run() {
         final Path absM2Repo = cacheOptions.resolveHome(m2Repo);
-        FqScmRef scmRef = FqScmRef.of(rawScmRef);
 
         CloneDirectoriesLayout cloneDirs = new CloneDirectoriesLayout(cacheOptions.cacheDir().resolve("clones"));
-        ReferenceMavenRepository referenceMavenRepository = new ReferenceMavenRepository(refRepoUri,
-                cacheOptions.cacheDir().resolve("ref-m2-repo"), absM2Repo, vertx);
+        ReferenceMavenRepository referenceMavenRepository = new ReferenceMavenRepository(
+                refRepoUri,
+                cacheOptions.cacheDir().resolve("ref-m2-repo"),
+                absM2Repo,
+                vertx);
         FindReferenceArtifactsService findService = new FindReferenceArtifactsService(cloneDirs, referenceMavenRepository);
 
-        Uni<BuildGroup<FqScmRef>> bg = findService.findPublishedArtifacts(scmRef, SourceRootDirectories.roots(sourceRoots));
+        BuildToolVersionsService buildToolVersionsService = new BuildToolVersionsService(vertx);
+        FoojayDiscoService foojayDiscoService = new FoojayDiscoService();
+        GuessBuildRequestService guessBuildRequestService = new GuessBuildRequestService(
+                vertx.fileSystem(),
+                cloneDirs,
+                referenceMavenRepository,
+                buildToolVersionsService,
+                findService,
+                foojayDiscoService);
 
-        List<Tool> tools = List.of(new Tool("sdkman", "java", "11.0.25-tem"));
-        String script = "./mvnw clean deploy -Prelease -ntp -DskipTests -Dgpg.skip -DskipPublishing=true deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}";
+        List<Uni<BuildRequestAlternatives>> resultUnis = rawScmRefs.stream()
+                .map(FqScmRef::of)
+                .map(guessBuildRequestService::guess)
+                .toList();
+
+        Uni.join().all(resultUnis).andCollectFailures()
+                .chain(results -> {
+                    try {
+                        OutputStream outStream = "-".equals(out) ? System.out : Files.newOutputStream(Path.of(out));
+                        try {
+                            if (resultUnis.size() == 1 && !forceOutputArray) {
+                                Mapper.instance().writeValue(outStream, results.get(0));
+                            } else {
+                                Mapper.instance().writeValue(outStream, results);
+                            }
+                        } finally {
+                            if (!"-".equals(out)) {
+                                outStream.close();
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return Uni.createFrom().voidItem();
+                })
+                .await().indefinitely();
 
     }
 
