@@ -4,11 +4,12 @@
  */
 package org.l2x6.jrebuild.core.build;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
 import org.l2x6.jrebuild.api.os.Arch;
 import org.l2x6.jrebuild.api.os.Os;
 import org.l2x6.jrebuild.api.os.Shell;
+import org.l2x6.jrebuild.api.os.Tool;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 
 public record BuildRequestAlternatives(
@@ -16,7 +17,7 @@ public record BuildRequestAlternatives(
         Os os,
         Arch arch,
         Set<BuildToolAndVersion> buildTool,
-        Set<JavaDistroAndVersion> java) {
+        Set<JavaDistroAndVersion> java) implements Iterable<BuildRequest> {
 
     public String createBuildScript(BuildTool bt, Shell shell) {
 
@@ -37,6 +38,53 @@ public record BuildRequestAlternatives(
         releaseProfiles.forEach(profile -> cmd.append(" -P").append(profile));
 
         return cmd.toString();
+    }
+
+    @Override
+    public Iterator<BuildRequest> iterator() {
+        return new BuildRequestAlternativesIterator(this);
+    }
+
+    static class BuildRequestAlternativesIterator implements Iterator<BuildRequest> {
+        private final BuildRequestAlternatives alternatives;
+        private final Iterator<BuildToolAndVersion> buildToolIt;
+        private Iterator<JavaDistroAndVersion> javaIt;
+
+        BuildRequestAlternativesIterator(BuildRequestAlternatives alternatives) {
+            this.alternatives = alternatives;
+            this.buildToolIt = alternatives.buildTool.iterator();
+            this.javaIt = alternatives.java.iterator();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return buildToolIt.hasNext() && javaIt.hasNext();
+        }
+
+        @Override
+        public BuildRequest next() {
+            if (!hasNext()) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            BuildToolAndVersion bt = buildToolIt.next();
+            JavaDistroAndVersion j = javaIt.next();
+            List<Tool> tools = Stream.of(bt.tool(), j.tool())
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .toList();
+            String buildScript = alternatives.createBuildScript(bt.buildTool(), alternatives.os.defaultShell());
+            BuildRequest result = new BuildRequest(
+                    alternatives.buildGroup,
+                    alternatives.os,
+                    alternatives.arch,
+                    alternatives.os.defaultShell(),
+                    tools,
+                    buildScript);
+            if (buildToolIt.hasNext() && !javaIt.hasNext()) {
+                javaIt = alternatives.java.iterator();
+            }
+            return result;
+        }
     }
 
 }

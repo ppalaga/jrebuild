@@ -1,0 +1,33 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2025 jrebuild project contributors as indicated by the @author tags
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+buildGroup:
+    fqScmRef:
+        scmRef:
+            kind: TAG
+            name: 4.10.0
+        repository:
+            type: git
+            uri: https://github.com/l2x6/pom-tuner.git
+    artifacts:
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:javadoc
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:sources
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:pom
+        - org.l2x6.pom-tuner:pom-tuner-parent:4.10.0:pom
+        - org.l2x6.pom-tuner:pom-tuner-tests:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner-tests:4.10.0:pom
+os: LINUX
+arch: amd64
+buildTool:
+    - buildTool: maven_wrapper
+java:
+    - distro: Temurin
+      version: 11.0.25
+    - distro: Temurin
+      version: 11
+    - distro: Temurin
+      version: 8
