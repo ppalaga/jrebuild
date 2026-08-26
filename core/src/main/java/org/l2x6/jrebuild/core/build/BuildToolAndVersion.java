@@ -18,6 +18,7 @@ public record BuildToolAndVersion(
                 using = Serializers.ComparableVersionDeserializer.class) ComparableVersion version)
         implements
             Comparable<BuildToolAndVersion> {
+
     private static final Comparator<BuildToolAndVersion> COMPARATOR = Comparator.comparing(BuildToolAndVersion::buildTool)
             .thenComparing(BuildToolAndVersion::version, Comparator.nullsLast(Comparator.reverseOrder()));
 
@@ -29,4 +30,5 @@ public record BuildToolAndVersion(
     public int compareTo(BuildToolAndVersion other) {
         return COMPARATOR.compare(this, other);
     }
+
 }

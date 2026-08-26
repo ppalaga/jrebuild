@@ -54,7 +54,9 @@ public record BuildGroup<T extends FqScmRef>(
     static <T extends FqScmRef> BuildGroup<T> fromJson(
             @JsonProperty("fqScmRef") T fqScmRef,
             @JsonProperty("artifacts") Set<Gavtc> artifacts) {
-        Set<Gavtc> immutable = Set.copyOf(artifacts);
+        final Set<Gavtc> sorted = new TreeSet<>(Gavtc.groupFirstComparator(OptionalWithDefault.valueOrDefaultComparator()));
+        sorted.addAll(artifacts);
+        final Set<Gavtc> immutable = Collections.unmodifiableSet(sorted);
         return new BuildGroup<>(fqScmRef, immutable, 31 * fqScmRef.hashCode() + immutable.hashCode());
     }
 

@@ -26,6 +26,10 @@ public record JavaDistroAndVersion(
         return new JavaDistroAndVersion("Temurin", version);
     }
 
+    public static JavaDistroAndVersion temurin(String version) {
+        return new JavaDistroAndVersion("Temurin", new ComparableVersion(version));
+    }
+
     Optional<Tool> tool() {
         return Optional.of(new Tool("sdkman", "java", version + "-" + distro));
     }

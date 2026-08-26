@@ -6,6 +6,7 @@ package org.l2x6.jrebuild.core.build;
 
 import java.util.Optional;
 import org.l2x6.jrebuild.api.os.Tool;
+import org.l2x6.jrebuild.api.util.ComparableVersion;
 import org.l2x6.jrebuild.core.build.service.LocalToolService.CliAssuredPackager;
 import org.l2x6.jrebuild.core.build.service.LocalToolService.Sdkman;
 
@@ -46,6 +47,10 @@ public enum BuildTool {
 
     public Optional<Tool> tool(String version) {
         return Optional.empty();
+    }
+
+    public BuildToolAndVersion version(String version) {
+        return new BuildToolAndVersion(this, new ComparableVersion(version));
     }
 
 }

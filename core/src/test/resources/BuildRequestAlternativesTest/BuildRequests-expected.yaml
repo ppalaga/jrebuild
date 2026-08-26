@@ -1,0 +1,97 @@
+---
+  - buildGroup:
+      fqScmRef:
+        scmRef:
+          kind: TAG
+          name: 4.10.0
+        repository:
+          type: git
+          uri: https://github.com/l2x6/pom-tuner.git
+      artifacts:
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:javadoc
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:sources
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:pom
+    os: LINUX
+    arch: amd64
+    shell: BASH
+    tools:
+      - packagerName: cli-assured
+        name: maven
+        version: 3.9.16
+      - packagerName: sdkman
+        name: java
+        version: 11.0.25-Temurin
+    buildScript: "mvn clean deploy -ntp -DskipTests -Dgpg.skip -DskipPublishing -Dcheckstyle.skip -Dpmd.skip deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}"
+  - buildGroup:
+      fqScmRef:
+        scmRef:
+          kind: TAG
+          name: 4.10.0
+        repository:
+          type: git
+          uri: https://github.com/l2x6/pom-tuner.git
+      artifacts:
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:javadoc
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:sources
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:pom
+    os: LINUX
+    arch: amd64
+    shell: BASH
+    tools:
+      - packagerName: cli-assured
+        name: maven
+        version: 3.9.16
+      - packagerName: sdkman
+        name: java
+        version: 11-Temurin
+    buildScript: "mvn clean deploy -ntp -DskipTests -Dgpg.skip -DskipPublishing -Dcheckstyle.skip -Dpmd.skip deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}"
+  - buildGroup:
+      fqScmRef:
+        scmRef:
+          kind: TAG
+          name: 4.10.0
+        repository:
+          type: git
+          uri: https://github.com/l2x6/pom-tuner.git
+      artifacts:
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:javadoc
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:sources
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:pom
+    os: LINUX
+    arch: amd64
+    shell: BASH
+    tools:
+      - packagerName: cli-assured
+        name: maven
+        version: 3.9.15
+      - packagerName: sdkman
+        name: java
+        version: 11.0.25-Temurin
+    buildScript: "mvn clean deploy -ntp -DskipTests -Dgpg.skip -DskipPublishing -Dcheckstyle.skip -Dpmd.skip deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}"
+  - buildGroup:
+      fqScmRef:
+        scmRef:
+          kind: TAG
+          name: 4.10.0
+        repository:
+          type: git
+          uri: https://github.com/l2x6/pom-tuner.git
+      artifacts:
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:javadoc
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:jar:sources
+        - org.l2x6.pom-tuner:pom-tuner:4.10.0:pom
+    os: LINUX
+    arch: amd64
+    shell: BASH
+    tools:
+      - packagerName: cli-assured
+        name: maven
+        version: 3.9.15
+      - packagerName: sdkman
+        name: java
+        version: 11-Temurin
+    buildScript: "mvn clean deploy -ntp -DskipTests -Dgpg.skip -DskipPublishing -Dcheckstyle.skip -Dpmd.skip deploy:deploy -DaltDeploymentRepository=local::${DEPLOYMENT_REPO}"
