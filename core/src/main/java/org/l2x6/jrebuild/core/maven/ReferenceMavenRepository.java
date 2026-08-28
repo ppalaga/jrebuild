@@ -78,8 +78,11 @@ public class ReferenceMavenRepository {
      * @param localReferenceMavenRepository root of the JRebuild-private local reference repository
      * @param vertx                         Vert.x Mutiny
      */
-    public ReferenceMavenRepository(String referenceRepositorybaseUri, Path localMavenRepository,
-            Path localReferenceMavenRepository, Vertx vertx) {
+    public ReferenceMavenRepository(
+            String referenceRepositorybaseUri,
+            Path localMavenRepository,
+            Path localReferenceMavenRepository,
+            Vertx vertx) {
         super();
         this.referenceRepositorybaseUri = referenceRepositorybaseUri;
         this.localMavenRepository = localMavenRepository;

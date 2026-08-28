@@ -32,17 +32,8 @@ public class GuessCommand implements Runnable {
     @Mixin
     CacheOptions cacheOptions;
 
-    @CommandLine.Option(names = {
-            "--m2-repo" }, description = """
-                    Root directory of local Maven repository
-                    """, defaultValue = "~/.m2/repository")
-    Path m2Repo;
-
-    @CommandLine.Option(names = {
-            "--ref-repo-uri" }, description = """
-                    URI of the Maven repository where to look for reference artifacts. Defaults to Maven Central.
-                    """, defaultValue = "https://repo1.maven.org/maven2")
-    String refRepoUri;
+    @Mixin
+    M2Options m2Options;
 
     @CommandLine.Option(names = {
             "--output", "-o" },
@@ -73,13 +64,13 @@ public class GuessCommand implements Runnable {
 
     @Override
     public void run() {
-        final Path absM2Repo = cacheOptions.resolveHome(m2Repo);
+        final Path absM2Repo = cacheOptions.resolveHome(m2Options.m2Repo);
 
-        CloneDirectoriesLayout cloneDirs = new CloneDirectoriesLayout(cacheOptions.cacheDir().resolve("clones"));
+        CloneDirectoriesLayout cloneDirs = new CloneDirectoriesLayout(cacheOptions.clonesDir());
         ReferenceMavenRepository referenceMavenRepository = new ReferenceMavenRepository(
-                refRepoUri,
-                cacheOptions.cacheDir().resolve("ref-m2-repo"),
+                m2Options.refRepoUri,
                 absM2Repo,
+                cacheOptions.localReferenceMavenRepositoryDir(),
                 vertx);
         FindReferenceArtifactsService findService = new FindReferenceArtifactsService(cloneDirs, referenceMavenRepository);
 

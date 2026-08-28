@@ -20,6 +20,10 @@ public record BuildRequestAlternatives(
         @JsonDeserialize(as = TreeSet.class) Set<BuildToolAndVersion> buildTool,
         @JsonDeserialize(as = TreeSet.class) Set<JavaDistroAndVersion> java) implements Iterable<BuildRequest> {
 
+    public static boolean canParse(String content) {
+        return content != null && content.contains("buildTool") && content.contains("distro");
+    }
+
     public String createBuildScript(BuildTool bt, Shell shell) {
 
         StringBuilder cmd = new StringBuilder(bt.command());

@@ -4,6 +4,7 @@
  */
 package org.l2x6.jrebuild.core.build.service;
 
+import java.nio.file.Path;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.l2x6.jrebuild.core.build.BuildRequest;
 import org.l2x6.jrebuild.core.build.Reproducibility;
 import org.l2x6.jrebuild.core.build.SourceRootDirectories;
 import org.l2x6.jrebuild.core.build.service.TestEnvironment.RemoteRepository;
+import org.l2x6.jrebuild.core.jackson.Mapper;
 
 public class LocalRebuildServiceTest {
 
@@ -45,6 +47,9 @@ public class LocalRebuildServiceTest {
             BuildRequest buildRequest = new BuildRequest(bg, currentOsArch.os(), currentOsArch.arch(),
                     currentOsArch.os().defaultShell(),
                     tools, script);
+
+            Mapper.instance().writeValue(Path.of("target/pom-tuner-build-request.yaml").toFile(), buildRequest);
+
             LocalRebuildService rebuildService = testEnv.getLocalRebuildService();
             BuildReport report = rebuildService.ensureBuilt(buildRequest, Reproducibility.PERFECT).await().indefinitely();
 

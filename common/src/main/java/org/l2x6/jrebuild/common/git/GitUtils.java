@@ -6,7 +6,9 @@ package org.l2x6.jrebuild.common.git;
 
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
+import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystemException;
@@ -18,7 +20,12 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.RebaseResult;
@@ -31,10 +38,8 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.DepthWalk.RevWalk;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.PushResult;
-import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.*;
 import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.api.scm.FqScmRef;
 import org.l2x6.jrebuild.api.scm.FqScmRef.FqScmRefRecord;
@@ -303,6 +308,50 @@ public class GitUtils {
                 .replaceAll("[-.]+$", "");
     }
 
+    public static Path resolveUriToFilePath(Path parent, String uri) {
+        Path result = parent.resolve(uriToFilePath(uri)).normalize();
+        if (!result.startsWith(parent)) {
+            throw new IllegalStateException(
+                    "Could not safely transform URI " + uri + " to a subpath of " + parent + ". Resulting path: " + result);
+        }
+        return result;
+    }
+
+    static Path uriToFilePath(String uri) {
+        uri = uri
+                .replaceAll("^(git(\\+ssh)?:|ssh:)//git@", "git@")
+                .replaceAll("(^file:.*)[/\\\\].git[/\\\\]?", "$1");
+
+        try {
+            URIish urish = new URIish(uri);
+            StringJoiner sb = new StringJoiner("/");
+            Stream.<Supplier<String>> of(urish::getHost, urish::getPath)
+                    .map(Supplier::get)
+                    .filter(Objects::nonNull)
+                    .map(GitUtils::trimSlash)
+                    .forEach(sb::add);
+
+            String sanitized = sb.toString().replace('\\', '/')
+                    .replace("/../", "/")
+                    .replaceAll("^\\.\\./", "")
+                    .replaceAll("[^A-Za-z0-9._/-]+", "-")
+                    .replace("-[\\-]+", "-")
+                    .replaceAll("^[-.]+", "")
+                    .replaceAll("[-.]+$", "")
+                    .replaceAll("[^A-Za-z0-9_]+/", "/")
+                    .replaceAll("/[^A-Za-z0-9_]+", "/")
+                    .replaceAll("\\.git$", "")
+                    .replaceAll("[-.]+$", "");
+            return Path.of(sanitized).normalize();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Could not parse git URI " + uri, e);
+        }
+    }
+
+    static String trimSlash(String string) {
+        return string.replaceAll("^[/\\\\]+", "").replaceAll("[/\\\\]+$", "");
+    }
+
     public static Uni<RevCommit> commitAsync(Git git, String message, String authorName, String authorEmail)
             throws NoFilepatternException, GitAPIException {
         return Uni.createFrom().item(() -> commit(git, message, authorName, authorEmail))
@@ -413,5 +462,10 @@ public class GitUtils {
             }
         }
         return true;
+    }
+
+    public static Optional<Path> findRepoRootDirectory(Path dir) {
+        File gitDir = new FileRepositoryBuilder().findGitDir(dir.toFile()).getGitDir();
+        return gitDir != null ? Optional.of(gitDir.toPath()) : Optional.empty();
     }
 }

@@ -32,7 +32,7 @@ public class CloneDirectoriesLayout {
     }
 
     public Uni<CloneDirectory> lockDirectory(String scmUri) {
-        final Path repoDir = clonesRootDirectory.resolve(GitUtils.uriToFileName(scmUri)).toAbsolutePath().normalize();
+        final Path repoDir = GitUtils.resolveUriToFilePath(clonesRootDirectory, scmUri).toAbsolutePath().normalize();
         return Uni.createFrom()
                 .item(() -> {
                     return lock(repoDir);

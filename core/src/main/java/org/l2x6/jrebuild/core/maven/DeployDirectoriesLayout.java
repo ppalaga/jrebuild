@@ -18,9 +18,9 @@ public class DeployDirectoriesLayout {
     private final FileSystem fileSystem;
     private final VertxContextPRNG prng;
 
-    public DeployDirectoriesLayout(Path clonesRootDirectory, Vertx vertx) {
+    public DeployDirectoriesLayout(Path deployRootDirectory, Vertx vertx) {
         super();
-        this.deployRootDirectory = Objects.requireNonNull(clonesRootDirectory, "clonesRootDirectory").toAbsolutePath()
+        this.deployRootDirectory = Objects.requireNonNull(deployRootDirectory, "clonesRootDirectory").toAbsolutePath()
                 .normalize();
         this.fileSystem = Objects.requireNonNull(vertx, "vertx").fileSystem();
         this.prng = VertxContextPRNG.current(vertx);

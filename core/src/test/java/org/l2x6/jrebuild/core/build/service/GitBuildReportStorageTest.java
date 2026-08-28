@@ -29,7 +29,6 @@ import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.core.build.BuildGroup;
 import org.l2x6.jrebuild.core.build.BuildReport;
 import org.l2x6.jrebuild.core.build.BuildRequest;
-import org.l2x6.jrebuild.core.build.Reproducibility;
 import org.l2x6.jrebuild.core.build.ResourceMatch;
 import org.l2x6.jrebuild.core.build.ResourceMatchLevel;
 import org.l2x6.jrebuild.core.scm.CloneDirectoriesLayout;
@@ -106,7 +105,7 @@ public class GitBuildReportStorageTest {
 
                 /* Refresh the remote working copy */
                 remoteGit.reset().setMode(ResetType.HARD).setRef("HEAD").call();
-                final Path reportFile = remoteDir.resolve(GitUtils.uriToFileName(gitUri))
+                final Path reportFile = GitUtils.resolveUriToFilePath(remoteDir, gitUri)
                         .resolve("1.2.3/build-report-2007-12-03T09-15-30.yaml");
                 /* And make sure the report was pushed by GitBuildReportStorage */
                 Assertions.assertThat(reportFile).isRegularFile();
@@ -142,7 +141,7 @@ public class GitBuildReportStorageTest {
 
                 /* Refresh the remote working copy */
                 remoteGit.reset().setMode(ResetType.HARD).setRef("HEAD").call();
-                final Path reportFile = remoteDir.resolve(GitUtils.uriToFileName(gitUri))
+                final Path reportFile = GitUtils.resolveUriToFilePath(remoteDir, gitUri)
                         .resolve("1.2.3/build-report-2007-12-03T09-15-33.yaml");
                 /* And make sure the report was pushed by GitBuildReportStorage */
                 Assertions.assertThat(reportFile).isRegularFile();
@@ -159,7 +158,7 @@ public class GitBuildReportStorageTest {
         return new BuildReport(
                 request,
                 "deadbeef",
-                Reproducibility.PERFECT,
+                BuildReport.ReproducibilityOverview.PERFECT,
                 ZonedDateTime.parse(ts),
                 Duration.ofSeconds(42),
                 builtArtifacts,

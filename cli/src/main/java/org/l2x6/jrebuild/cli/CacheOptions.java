@@ -37,6 +37,18 @@ public class CacheOptions {
         return result;
     }
 
+    public Path toolsCacheDir() {
+        return cacheDir.resolve("tools");
+    }
+
+    public Path localReferenceMavenRepositoryDir() {
+        return cacheDir.resolve("m2-ref");
+    }
+
+    public Path clonesDir() {
+        return cacheDir.resolve("clones");
+    }
+
     protected Path userHome() {
         Path result;
         if ((result = userHome) == null) {

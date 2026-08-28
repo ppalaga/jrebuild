@@ -9,6 +9,6 @@ import picocli.CommandLine;
 
 @TopCommand
 @CommandLine.Command(mixinStandardHelpOptions = true,
-        subcommands = { AnalyzeCommand.class, FindPncBuildsCommand.class, GuessCommand.class })
+        subcommands = { AnalyzeCommand.class, FindPncBuildsCommand.class, GuessCommand.class, RebuildCommand.class })
 public class EntryCommand {
 }

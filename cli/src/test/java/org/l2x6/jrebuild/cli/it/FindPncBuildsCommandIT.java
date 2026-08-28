@@ -4,7 +4,6 @@
  */
 package org.l2x6.jrebuild.cli.it;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -16,6 +15,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.cliassured.CliAssured;
+import org.cliassured.CommandResult;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -47,8 +47,7 @@ public class FindPncBuildsCommandIT {
                 return FileVisitResult.CONTINUE;
             }
         });
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        CliAssured.java().args(
+        CommandResult result = CliAssured.java().args(
                 "-Dstdout.encoding=utf-8", "-Dstderr.encoding=utf-8",
                 "-jar", "target/quarkus-app/quarkus-run.jar", "find-pnc-builds",
                 "--root-artifacts=com.fasterxml.woodstox:woodstox-core:7.1.1",
@@ -58,14 +57,13 @@ public class FindPncBuildsCommandIT {
                 "--cache-dir=" + cacheDir)
                 .then()
                 .stdout()
-                .redirect(out)
                 .captureAll()
                 .stderr().captureAll()
                 .execute()
                 .assertSuccess();
         ;
 
-        String outString = new String(out.toByteArray(), StandardCharsets.UTF_8);
+        String outString = new String(result.stderr().bytes(), StandardCharsets.UTF_8);
         Assertions.assertThat(outString.replace("\r", "")).contains("""
                  ❌ 🟢root:root:0.0.0/null
                 `- ✅ 🟢com.fasterxml.woodstox:woodstox-core:7.1.1:jar/7.1.1.redhat-00002

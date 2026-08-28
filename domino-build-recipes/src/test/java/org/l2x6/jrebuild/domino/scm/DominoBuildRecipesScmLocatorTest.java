@@ -151,22 +151,6 @@ class DominoBuildRecipesScmLocatorTest {
         runFailingTest("1.0", "1.0.Final", "1.0.Alpha1");
     }
 
-    @Test
-    void uriToFileName() {
-        assertThat(GitUtils.uriToFileName("https://github.com/path/to/report.pdf?download=1#section"))
-                .isEqualTo("github.com-path-to-report.pdf-download-1-section");
-        assertThat(GitUtils.uriToFileName("https://github.com/org/repo.git")).isEqualTo("github.com-org-repo");
-        assertThat(GitUtils.uriToFileName("file:///C:/Program Files/Some App/app.exe"))
-                .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(GitUtils.uriToFileName("C:\\Program Files\\Some App\\app.exe"))
-                .isEqualTo("C-Program-Files-Some-App-app.exe");
-        assertThat(GitUtils.uriToFileName("git+ssh://git@github.com:owner/repo.git"))
-                .isEqualTo("github.com-owner-repo");
-        assertThat(GitUtils.uriToFileName("https://example.com/trailing-dot.")).isEqualTo("example.com-trailing-dot");
-        assertThat(GitUtils.uriToFileName("git@github.com:quarkusio/quarkus.git"))
-                .isEqualTo("github.com-quarkusio-quarkus");
-    }
-
     void runPassingTest(String version, String expected, String... tags) {
         Map<String, String> tagMap = new HashMap<>();
         Arrays.stream(tags).forEach(a -> tagMap.put(a, ""));

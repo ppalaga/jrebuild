@@ -12,7 +12,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,7 @@ public record LocalRebuildService(
 
     Uni<BuildReport> ensureBuilt(BuildRequest buildRequest, Reproducibility requiredReproducibility, Clock clock) {
         return buildReportStorage.list(buildRequest.buildGroup().fqScmRef())
-                .select().where(report -> report.reproducibility().isBetterOrSame(requiredReproducibility)
+                .select().where(report -> report.reproducibility().overall().isBetterOrSame(requiredReproducibility)
                         && report.containsAll(buildRequest.buildGroup().artifacts()))
                 .collect()
                 .with(Collectors.minBy(BuildReport.byBestReproducibilityAndNewestTimestamp()))
@@ -71,24 +70,32 @@ public record LocalRebuildService(
                     }
                     /* We have to rebuild */
                     /* Create or find the build directory */
-                    return cloneDirectoriesLayout.lockDirectory(buildRequest.buildGroup().fqScmRef().repository().uri())
-                            .onItem()
-                            .transformToUni(cloneDir -> deployDirectoriesLayout
-                                    .createDeployDirectory()
-                                    .chain(deployDirectory -> build(
-                                            vertx,
-                                            cloneDir,
-                                            deployDirectory,
-                                            buildRequest,
-                                            tools,
-                                            matchService,
-                                            referenceMavenRepository,
-                                            clock)
-                                            .onItem().transformToUni(buildReportStorage::store)
-                                            .eventually(cloneDir::close)
-                                            .eventually(deployDirectory::close)));
+                    return build(buildRequest, clock);
                 });
 
+    }
+
+    public Uni<BuildReport> build(BuildRequest buildRequest) {
+        return build(buildRequest, Clock.systemUTC());
+    }
+
+    Uni<BuildReport> build(BuildRequest buildRequest, Clock clock) {
+        return cloneDirectoriesLayout.lockDirectory(buildRequest.buildGroup().fqScmRef().repository().uri())
+                .onItem()
+                .transformToUni(cloneDir -> deployDirectoriesLayout
+                        .createDeployDirectory()
+                        .chain(deployDirectory -> build(
+                                vertx,
+                                cloneDir,
+                                deployDirectory,
+                                buildRequest,
+                                tools,
+                                matchService,
+                                referenceMavenRepository,
+                                clock)
+                                .onItem().transformToUni(buildReportStorage::store)
+                                .eventually(cloneDir::close)
+                                .eventually(deployDirectory::close)));
     }
 
     static Uni<BuildReport> build(
@@ -128,7 +135,7 @@ public record LocalRebuildService(
                         throw new BuildReportFailure(new BuildReport(
                                 buildRequest,
                                 commitId,
-                                Reproducibility.INVALID_SOURCE_INFO,
+                                BuildReport.ReproducibilityOverview.INVALID_SOURCE_INFO,
                                 ts,
                                 Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                 Map.of(),
@@ -168,7 +175,7 @@ public record LocalRebuildService(
                         throw new BuildReportFailure(new BuildReport(
                                 buildRequest,
                                 commitId,
-                                Reproducibility.UNBUILDABLE,
+                                BuildReport.ReproducibilityOverview.UNBUILDABLE,
                                 ts,
                                 Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                 Map.of(),
@@ -177,7 +184,7 @@ public record LocalRebuildService(
                         throw new BuildReportFailure(new BuildReport(
                                 buildRequest,
                                 commitId,
-                                Reproducibility.UNBUILDABLE,
+                                BuildReport.ReproducibilityOverview.UNBUILDABLE,
                                 ts,
                                 Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                                 Map.of(),
@@ -218,12 +225,8 @@ public record LocalRebuildService(
                                                 a,
                                                 ResourceMatch.of(ResourceMatchLevel.MISSING_IN_REBUILD,
                                                         a.getRepositoryPath())));
-                                Reproducibility reproducibility = builtArtifactsMap.values().stream()
-                                        .map(ResourceMatch::level)
-                                        .sorted(Comparator.comparing(ResourceMatchLevel::ordinal))
-                                        .findFirst()
-                                        .orElseThrow()
-                                        .reproducibility();
+                                BuildReport.ReproducibilityOverview reproducibility = BuildReport.ReproducibilityOverview
+                                        .of(builtArtifactsMap);
 
                                 return new BuildReport(
                                         buildRequest,
@@ -256,7 +259,7 @@ public record LocalRebuildService(
         return new BuildReport(
                 buildRequest,
                 null,
-                Reproducibility.FAILED,
+                BuildReport.ReproducibilityOverview.FAILED,
                 ts,
                 Duration.between(ts, ZonedDateTime.now(clock.withZone(ZoneOffset.UTC))),
                 Map.of(),

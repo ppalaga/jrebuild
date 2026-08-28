@@ -45,61 +45,8 @@ public class ClassFileMatchServiceTest {
                 new ResourceMatch(
                         "target/test-classes/org/l2x6/jrebuild/core/build/service/samples/ClassPerson2.class",
                         ResourceMatchLevel.BUILDABLE,
-                        """
-                                flags: public super -> final public super
-                                name: org.l2x6.jrebuild.core.build.service.samples.ClassPerson1 -> org.l2x6.jrebuild.core.build.service.samples.ClassPerson2
-                                fields:
-                                    firstName:Ljava/lang/String;:
-                                        flags: final private -> <none>
-                                methods:
-                                    <init>(Ljava/lang/String;Ljava/lang/String;)V
-                                        code:
-                                            @@ -7,16 +7,16 @@
-                                               - {start: 9, line number: 10}
-                                               - {start: 14, line number: 11}
-                                             local variables:
-                                            -  - {start: 0, end: 15, slot: 0, name: this, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;}
-                                            +  - {start: 0, end: 15, slot: 0, name: this, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;}
-                                               - {start: 0, end: 15, slot: 1, name: firstName, type: Ljava/lang/String;}
-                                               - {start: 0, end: 15, slot: 2, name: lastName, type: Ljava/lang/String;}
-                                             //stack map frame @0: {locals: [THIS, java/lang/String, java/lang/String], stack: []}
-                                            -0: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;, variable name: this}
-                                            +0: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;, variable name: this}
-                                             1: {opcode: INVOKESPECIAL, owner: java/lang/Object, method name: <init>, method type: ()V}
-                                            -4: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;, variable name: this}
-                                            +4: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;, variable name: this}
-                                             5: {opcode: ALOAD_1, slot: 1, type: Ljava/lang/String;, variable name: firstName}
-                                            -6: {opcode: PUTFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson1, field name: firstName, field type: Ljava/lang/String;}
-                                            -9: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;, variable name: this}
-                                            +6: {opcode: PUTFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson2, field name: firstName, field type: Ljava/lang/String;}
-                                            +9: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;, variable name: this}
-                                             10: {opcode: ALOAD_2, slot: 2, type: Ljava/lang/String;, variable name: lastName}
-                                            -11: {opcode: PUTFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson1, field name: lastName, field type: Ljava/lang/String;}
-                                            +11: {opcode: PUTFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson2, field name: lastName, field type: Ljava/lang/String;}
-                                             14: {opcode: RETURN}
-                                    toString()Ljava/lang/String;
-                                        code:
-                                            @@ -4,11 +4,11 @@
-                                             line numbers:
-                                               - {start: 0, line number: 15}
-                                             local variables:
-                                            -  - {start: 0, end: 14, slot: 0, name: this, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;}
-                                            -//stack map frame @0: {locals: [org/l2x6/jrebuild/core/build/service/samples/ClassPerson1], stack: []}
-                                            -0: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;, variable name: this}
-                                            -1: {opcode: GETFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson1, field name: firstName, field type: Ljava/lang/String;}
-                                            -4: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson1;, variable name: this}
-                                            -5: {opcode: GETFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson1, field name: lastName, field type: Ljava/lang/String;}
-                                            -8: {opcode: INVOKEDYNAMIC, name: makeConcatWithConstants, descriptor: (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;, bootstrap method: STATIC java/lang/invoke/StringConcatFactory::makeConcatWithConstants, arguments: ['\\u0001 \\u0001']}
-                                            +  - {start: 0, end: 14, slot: 0, name: this, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;}
-                                            +//stack map frame @0: {locals: [org/l2x6/jrebuild/core/build/service/samples/ClassPerson2], stack: []}
-                                            +0: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;, variable name: this}
-                                            +1: {opcode: GETFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson2, field name: firstName, field type: Ljava/lang/String;}
-                                            +4: {opcode: ALOAD_0, slot: 0, type: Lorg/l2x6/jrebuild/core/build/service/samples/ClassPerson2;, variable name: this}
-                                            +5: {opcode: GETFIELD, owner: org/l2x6/jrebuild/core/build/service/samples/ClassPerson2, field name: lastName, field type: Ljava/lang/String;}
-                                            +8: {opcode: INVOKEDYNAMIC, name: makeConcatWithConstants, descriptor: (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;, bootstrap method: STATIC java/lang/invoke/StringConcatFactory::makeConcatWithConstants, arguments: ['firstName=\\u0001, lastName=\\u0001]']}
-                                             13: {opcode: ARETURN}
-                                """
-                                .trim(),
+                        Files.readString(
+                                Path.of("src/test/resources/ClassFileMatchServiceTest/ClassPerson2-diff-expected.txt")),
                         List.of()));
     }
 

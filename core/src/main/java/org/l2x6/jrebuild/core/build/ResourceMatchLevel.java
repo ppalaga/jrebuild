@@ -63,7 +63,11 @@ public enum ResourceMatchLevel implements Comparable<ResourceMatchLevel> {
     }
 
     public ResourceMatchLevel lower(ResourceMatchLevel other) {
-        return this.ordinal() < other.ordinal() ? this : other;
+        return other == null
+                ? this
+                : this.ordinal() < other.ordinal()
+                        ? this
+                        : other;
     }
 
     public Reproducibility reproducibility() {

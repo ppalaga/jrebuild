@@ -57,7 +57,7 @@ public interface BuildReportStorage {
         return new FilesystemBuildReportStorage(fileSystem, reportsDirectory);
     }
 
-    static class GitBuildReportStorage implements BuildReportStorage {
+    class GitBuildReportStorage implements BuildReportStorage {
         private final Uni<GitFsStorage> delegate;
         private final String authorName;
         private final String authorEmail;
@@ -145,7 +145,7 @@ public interface BuildReportStorage {
 
     }
 
-    static record FilesystemBuildReportStorage(FileSystem fileSystem, Path reportsDirectory) implements BuildReportStorage {
+    record FilesystemBuildReportStorage(FileSystem fileSystem, Path reportsDirectory) implements BuildReportStorage {
         private static final DateTimeFormatter DIR_FORMAT = new DateTimeFormatterBuilder().parseCaseInsensitive()
                 .append(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
                 .appendLiteral('T')
@@ -165,9 +165,18 @@ public interface BuildReportStorage {
 
         @SuppressWarnings("unused")
         Uni<Path> getOrCreateReportsDirectory(FqScmRef fqScmRef) {
-            Path result = reportsDirectory.resolve(GitUtils.uriToFileName(fqScmRef.repository().uri()))
-                    .resolve(fqScmRef.scmRef().name());
+            Path result = reportsDir(reportsDirectory, fqScmRef);
             return fileSystem.mkdirs(result.toString()).map(dirCreated -> result);
+        }
+
+        static Path reportsDir(Path reportsDirectory, FqScmRef fqScmRef) {
+            return GitUtils.resolveUriToFilePath(reportsDirectory, fqScmRef.repository().uri())
+                    .resolve(fqScmRef.scmRef().name());
+        }
+
+        public static Path path(Path reportsDirectory, BuildReport buildReport) {
+            return reportsDir(reportsDirectory, buildReport.buildRequest().buildGroup().fqScmRef())
+                    .resolve("build-report-" + format(buildReport.buildStart()) + ".yaml");
         }
 
         @SuppressWarnings("unused")
