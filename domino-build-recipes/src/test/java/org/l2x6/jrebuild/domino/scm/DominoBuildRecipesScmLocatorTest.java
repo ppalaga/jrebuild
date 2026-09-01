@@ -28,6 +28,7 @@ import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.pom.tuner.model.Gav;
 
@@ -73,16 +74,16 @@ class DominoBuildRecipesScmLocatorTest {
 
     }
 
-    static final RemoteScmLookup scmLookup = new MutableRemoteScmLookup("git").put(
+    static final RemoteScmLookup scmLookup = new MutableRemoteScmLookup(ScmRepositoryType.git).put(
 
-            new AnnotatedScmRepository(DominoBuildRecipesScmLocator.SOURCE, "git",
+            new AnnotatedScmRepository(DominoBuildRecipesScmLocator.SOURCE, ScmRepositoryType.git,
                     "https://github.com/apache/commons-lang.git"),
             Result.success(Map.of("LANG_2_5", "deabeef")));
 
     @Test
     void lookupScmInfoRelaxNG() {
         List<AnnotatedFqScmRef> result = new DominoBuildRecipesScmLocator(gitRepoCloneDir, List.of(gitRepoUri),
-                new MutableRemoteScmLookup("git"))
+                new MutableRemoteScmLookup(ScmRepositoryType.git))
                 .locate(Gav.of("relaxngDatatype:relaxngDatatype:20020414"));
         org.assertj.core.api.Assertions.assertThat(result).hasSize(1);
         final AnnotatedFqScmRef tag = result.get(0);

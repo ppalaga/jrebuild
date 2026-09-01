@@ -63,7 +63,7 @@ public class RootArtifactsOptions extends ProjectDirOptions {
 
     @CommandLine.Option(names = {
             "--include-parents-and-imports" },
-            description = "If true, process also parents and dependencyManagement imports as if they were dependencies; otherwise process only dependencies",
+            description = "If true, also parents and dependencyManagement imports will be processed as if they were dependencies; otherwise only dependencies will be processed",
             defaultValue = "true", fallbackValue = "true")
     protected boolean includeParentsAndImports;
 

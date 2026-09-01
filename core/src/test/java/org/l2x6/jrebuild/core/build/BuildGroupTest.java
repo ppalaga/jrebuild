@@ -10,6 +10,7 @@ import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.pom.tuner.model.Gav;
 import org.l2x6.pom.tuner.model.Gavtc;
 
@@ -19,7 +20,7 @@ public class BuildGroupTest {
     void findMainGroupId() {
 
         AnnotatedFqScmRef scmRef = new AnnotatedFqScmRef(new ScmRef(Kind.TAG, "1.2.3", "deadbeef"),
-                new AnnotatedScmRepository("?", "git", "https://github.com/org/project.git"));
+                new AnnotatedScmRepository("?", ScmRepositoryType.git, "https://github.com/org/project.git"));
         {
             BuildGroup<AnnotatedFqScmRef> g = BuildGroup.builder(scmRef)
                     .artifact(Gavtc.of("foo:f1:1.2.3"))

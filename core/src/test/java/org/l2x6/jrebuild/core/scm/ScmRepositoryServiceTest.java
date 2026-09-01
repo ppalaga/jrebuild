@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
@@ -56,8 +57,8 @@ public class ScmRepositoryServiceTest {
             DependencyCollectorRequest re = builder.build();
             final ScmRepositoryService locator = ScmRepositoryService.create(
                     context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel,
-                    new MutableRemoteScmLookup("git").put(
-                            new AnnotatedScmRepository("♢", "git", "https://github.com/l2x6/jrebuild-test"),
+                    new MutableRemoteScmLookup(ScmRepositoryType.git).put(
+                            new AnnotatedScmRepository("♢", ScmRepositoryType.git, "https://github.com/l2x6/jrebuild-test"),
                             Result.success(Map.of("0.0.1", "deadbeef"))),
                     gitRepoCloneDir,
                     cacheDir,

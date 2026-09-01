@@ -47,4 +47,36 @@ public class GitUtilsTest {
                 .isEqualTo(Path.of("github.com/quarkusio/quarkus"));
     }
 
+    @Test
+    void toNormalizedHttpsUri() {
+        assertThat(GitUtils.toNormalizedHttpsUri("ssh://git@github.com/eclipse-ee4j/jaxb-stax-ex.git"))
+                .isEqualTo("https://github.com/eclipse-ee4j/jaxb-stax-ex.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("//github.com/org/repo/foo"))
+                .isEqualTo("https://github.com/org/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("//github.com/org/repo"))
+                .isEqualTo("https://github.com/org/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("ssh://git@github.com/org/repo"))
+                .isEqualTo("https://github.com/org/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("https://github.com/trailing-dot."))
+                .isEqualTo("https://github.com/trailing-dot.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("file:///home/user/projects/foo/bar/.git/"))
+                .isEqualTo("file:///home/user/projects/foo/bar/.git/");
+        assertThat(GitUtils.toNormalizedHttpsUri("https://github.com/org/repo.git"))
+                .isEqualTo("https://github.com/org/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("https://github.com/org/repo"))
+                .isEqualTo("https://github.com/org/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("file:///C:/Program Files/Some App/app.exe"))
+                .isEqualTo("file:///C:/Program Files/Some App/app.exe");
+        assertThat(GitUtils.toNormalizedHttpsUri("C:\\Program Files\\Some App\\app.exe"))
+                .isEqualTo("C:\\Program Files\\Some App\\app.exe");
+        assertThat(GitUtils.toNormalizedHttpsUri("git+ssh://git@github.com:owner/repo.git"))
+                .isEqualTo("https://github.com/owner/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("ssh://git@github.com:owner/repo.git"))
+                .isEqualTo("https://github.com/owner/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("git://git@github.com:owner/repo.git"))
+                .isEqualTo("https://github.com/owner/repo.git");
+        assertThat(GitUtils.toNormalizedHttpsUri("git@github.com:quarkusio/quarkus.git"))
+                .isEqualTo("https://github.com/quarkusio/quarkus.git");
+    }
+
 }

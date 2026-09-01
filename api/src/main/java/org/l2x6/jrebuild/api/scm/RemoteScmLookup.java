@@ -10,7 +10,7 @@ import java.util.Map;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 
 public interface RemoteScmLookup {
-    String type();
+    ScmRepository.ScmRepositoryType type();
 
     /**
      * Get the revision ID (sha for git) for the given reference (typically a tag)
@@ -30,11 +30,11 @@ public interface RemoteScmLookup {
 
     static class AggregateRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
 
-        private final Map<String, RemoteScmLookup> lookups;
+        private final Map<ScmRepository.ScmRepositoryType, RemoteScmLookup> lookups;
 
         public AggregateRemoteScmLookup(RemoteScmLookup... lookups) {
             super();
-            Map<String, RemoteScmLookup> m = new LinkedHashMap<>();
+            Map<ScmRepository.ScmRepositoryType, RemoteScmLookup> m = new LinkedHashMap<>();
             for (RemoteScmLookup l : lookups) {
                 m.put(l.type(), l);
             }
@@ -63,19 +63,19 @@ public interface RemoteScmLookup {
         }
 
         @Override
-        public String type() {
+        public ScmRepository.ScmRepositoryType type() {
             throw new UnsupportedOperationException();
         }
 
     }
 
-    static class MutableRemoteScmLookup implements RemoteScmLookup {
+    class MutableRemoteScmLookup implements RemoteScmLookup {
 
         private final Map<ScmRepository.AnnotatedScmRepository, Result<Map<String, String>, String>> entries = new LinkedHashMap<>();
 
-        private final String type;
+        private final ScmRepository.ScmRepositoryType type;
 
-        public MutableRemoteScmLookup(String type) {
+        public MutableRemoteScmLookup(ScmRepository.ScmRepositoryType type) {
             super();
             this.type = type;
         }
@@ -91,7 +91,7 @@ public interface RemoteScmLookup {
         }
 
         @Override
-        public String type() {
+        public ScmRepository.ScmRepositoryType type() {
             return type;
         }
 

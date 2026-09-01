@@ -468,4 +468,43 @@ public class GitUtils {
         File gitDir = new FileRepositoryBuilder().findGitDir(dir.toFile()).getGitDir();
         return gitDir != null ? Optional.of(gitDir.toPath()) : Optional.empty();
     }
+
+    private static final Set<String> HTTPS_NOMALIZABLE_HOSTS = Set.of("github.com", "gitlab.com");
+
+    public static String toNormalizedHttpsUri(String uri) {
+        if (!uri.startsWith("file:")) {
+            try {
+                uri = uri
+                        .replaceAll("^(git(\\+ssh)?:|ssh:)//git@", "git@");
+                if (uri.startsWith("git@") && !uri.contains(":")) {
+                    int slashPos = uri.indexOf('/');
+                    if (slashPos >= 0) {
+                        // Replace the first slash with colon
+                        uri = uri.substring(0, slashPos) + ":" + uri.substring(slashPos + 1);
+                    }
+                }
+                if (uri.startsWith("//")) {
+                    uri = "https:" + uri;
+                }
+                URIish urish = new URIish(uri);
+                String host = urish.getHost();
+                if (host != null && HTTPS_NOMALIZABLE_HOSTS.contains(host)) {
+                    String path = trimSlash(urish.getPath());
+                    final String[] parts = path.split("/");
+                    if (parts.length > 2) {
+                        path = parts[0] + "/" + parts[1];
+                    }
+
+                    String httpsUri = "https://" + host + "/" + path;
+                    while (httpsUri.endsWith(".")) {
+                        httpsUri = httpsUri.substring(0, httpsUri.length() - 1);
+                    }
+                    return httpsUri.endsWith(".git") ? httpsUri : httpsUri + ".git";
+                }
+            } catch (URISyntaxException e) {
+                log.warnf("Could not transform %s to an https:// URI", uri);
+            }
+        }
+        return uri;
+    }
 }
