@@ -352,6 +352,10 @@ public class GitUtils {
         return string.replaceAll("^[/\\\\]+", "").replaceAll("[/\\\\]+$", "");
     }
 
+    static String trimSlashAndTrailingDot(String string) {
+        return string.replaceAll("^[/\\\\]+", "").replaceAll("[\\./\\\\]+$", "");
+    }
+
     public static Uni<RevCommit> commitAsync(Git git, String message, String authorName, String authorEmail)
             throws NoFilepatternException, GitAPIException {
         return Uni.createFrom().item(() -> commit(git, message, authorName, authorEmail))
@@ -467,5 +471,49 @@ public class GitUtils {
     public static Optional<Path> findRepoRootDirectory(Path dir) {
         File gitDir = new FileRepositoryBuilder().findGitDir(dir.toFile()).getGitDir();
         return gitDir != null ? Optional.of(gitDir.toPath()) : Optional.empty();
+    }
+
+    private static final Set<String> HTTPS_NOMALIZABLE_HOSTS = Set.of(
+            "github.com",
+            "gitlab.com",
+            "gitlab.ow2.org");
+
+    public static String toNormalizedHttpsUri(String uri) {
+        if (!uri.startsWith("file:")) {
+            try {
+                uri = uri
+                        .replaceAll("^(git(\\+ssh)?:|ssh:)//git@", "git@");
+                if (uri.startsWith("git@") && !uri.contains(":")) {
+                    int slashPos = uri.indexOf('/');
+                    if (slashPos >= 0) {
+                        // Replace the first slash with colon
+                        uri = uri.substring(0, slashPos) + ":" + uri.substring(slashPos + 1);
+                    }
+                }
+                if (uri.startsWith("//")) {
+                    uri = "https:" + uri;
+                }
+                URIish urish = new URIish(uri);
+                String host = urish.getHost();
+                if (host != null) {
+                    String path = trimSlashAndTrailingDot(urish.getPath());
+                    if (HTTPS_NOMALIZABLE_HOSTS.contains(host)) {
+                        final String[] parts = path.split("/");
+                        if (parts.length > 2) {
+                            path = parts[0] + "/" + parts[1];
+                        }
+                        String httpsUri = "https://" + host + "/" + path;
+                        return httpsUri.endsWith(".git") ? httpsUri : httpsUri + ".git";
+                    } else if ("http".equals(urish.getScheme()) || "https".equals(urish.getScheme())) {
+                        return "https://" + host + "/" + path;
+                    } else {
+                        return trimSlashAndTrailingDot(uri);
+                    }
+                }
+            } catch (URISyntaxException e) {
+                log.warnf("Could not transform %s to an https:// URI", uri);
+            }
+        }
+        return uri;
     }
 }

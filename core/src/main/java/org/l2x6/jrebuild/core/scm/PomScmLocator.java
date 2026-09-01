@@ -26,13 +26,15 @@ import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
+import org.l2x6.jrebuild.common.scm.ScmUtils;
 import org.l2x6.pom.tuner.model.Gav;
 
 public class PomScmLocator extends AbstractScmLocator {
     private static final Logger log = Logger.getLogger(PomScmLocator.class);
     private static final String SOURCE = "♢";
-    private static final Pattern SCM_TYPE_PATTERN = Pattern.compile("^scm\\:([^\\|\\:]+)[\\|\\:](.*)$");
+    private static final Pattern SCM_TYPE_PATTERN = Pattern.compile("^scm\\:([^\\|\\:@]+)[\\|\\:](.*)$");
     private final Function<Gav, Model> getEffectiveModel;
 
     public PomScmLocator(Function<Gav, Model> getEffectiveModel, RemoteScmLookup scmLookup) {
@@ -82,9 +84,14 @@ public class PomScmLocator extends AbstractScmLocator {
     static AnnotatedScmRepository toScmRepository(String url) {
         Matcher m = SCM_TYPE_PATTERN.matcher(url);
         if (m.matches()) {
-            return new AnnotatedScmRepository(SOURCE, m.group(1), normalizeScmUri(m.group(2)));
+            try {
+                return ScmUtils.toNormalizedHttpsAnnotatedScmRepository(SOURCE, ScmRepositoryType.valueOf(m.group(1)),
+                        m.group(2));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Could not parse SCM URI " + url, e);
+            }
         }
-        return new AnnotatedScmRepository(SOURCE, "git", normalizeScmUri(url));
+        return ScmUtils.toNormalizedHttpsAnnotatedScmRepository(SOURCE, ScmRepositoryType.git, url);
     }
 
     public AnnotatedFqScmRef of(Gav gav, String tag, AnnotatedScmRepository uri) {

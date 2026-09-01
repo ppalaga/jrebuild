@@ -6,15 +6,16 @@ java -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8000 -jar 
   --additional-boms='io.quarkus:quarkus-bom:3.33.1' > ~/zzz/build.log 2>&1
 
 java -jar target/quarkus-app/quarkus-run.jar analyze \
-  --bom 'io.quarkiverse.cxf:quarkus-cxf-bom:3.33.1' \
+  --bom 'io.quarkiverse.cxf:quarkus-cxf-bom:3.39.1' \
   --bom-includes 'io.quarkiverse.cxf' \
   --cut-stem 'io.quarkiverse.cxf:*' \
   --excludes 'com.sun:tools,io.quarkus:*,org.jboss:jandex,xerces:xerces-impl,xml-apis:xml-apis,xml-resolver:xml-resolver,org.eclipse.angus:angus-activation' \
-  --additional-boms='io.quarkus:quarkus-bom:3.33.1' \
+  --additional-boms='io.quarkus:quarkus-bom:3.39.1' \
   --reproducible-central-urls='file:///home/ppalaga/orgs/jrebuild/reproducible-central/.git' \
   --domino-recipes-urls='file:///home/ppalaga/orgs/jrebuild/camel-spring-boot-depstobuild,file:///home/ppalaga/orgs/jrebuild/jvm-build-data' \
-  --pnc-base-url='https://orch.pnc.engineering.redhat.com/pnc-rest/v2' \
   > ~/zzz/build.log 2>&1
+
+#   --pnc-base-url='https://orch.pnc.engineering.redhat.com/pnc-rest/v2' \
 
 java -jar target/quarkus-app/quarkus-run.jar find-pnc-builds \
   --bom 'io.quarkiverse.cxf:quarkus-cxf-bom:3.33.1' \

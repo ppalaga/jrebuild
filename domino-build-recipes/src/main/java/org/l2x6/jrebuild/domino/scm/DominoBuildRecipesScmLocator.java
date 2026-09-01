@@ -27,6 +27,7 @@ import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.domino.scm.recipes.BuildRecipe;
 import org.l2x6.jrebuild.domino.scm.recipes.location.RecipeFile;
@@ -80,7 +81,7 @@ public class DominoBuildRecipesScmLocator extends AbstractScmLocator {
         for (RepositoryInfo repositoryInfo : repos) {
             final String type = repositoryInfo.getType();
             final AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE,
-                    type == null ? "git" : type,
+                    type == null ? ScmRepositoryType.git : ScmRepositoryType.valueOf(type),
                     repositoryInfo.getUriWithoutFragment());
             log.debugf("Mapping %s to a tag in %s with mappings %s", gav, uri, allMappings);
 

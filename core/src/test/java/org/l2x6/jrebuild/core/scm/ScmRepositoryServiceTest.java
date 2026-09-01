@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup.MutableRemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.core.dep.DependencyCollector;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest;
 import org.l2x6.jrebuild.core.dep.DependencyCollectorRequest.Builder;
@@ -56,8 +57,8 @@ public class ScmRepositoryServiceTest {
             DependencyCollectorRequest re = builder.build();
             final ScmRepositoryService locator = ScmRepositoryService.create(
                     context.lookup().lookup(CachingMavenModelReader.class).get()::readEffectiveModel,
-                    new MutableRemoteScmLookup("git").put(
-                            new AnnotatedScmRepository("♢", "git", "https://github.com/l2x6/jrebuild-test"),
+                    new MutableRemoteScmLookup(ScmRepositoryType.git).put(
+                            new AnnotatedScmRepository("♢", ScmRepositoryType.git, "https://github.com/l2x6/jrebuild-test.git"),
                             Result.success(Map.of("0.0.1", "deadbeef"))),
                     gitRepoCloneDir,
                     cacheDir,
@@ -76,8 +77,8 @@ public class ScmRepositoryServiceTest {
                     .collect(Collectors.toList());
             Assertions.assertThat(trees).containsExactly(
                     """
-                            ✅♢ git:https://github.com/l2x6/jrebuild-test#0.0.1@deadbeef [org.l2x6.jrebuild.test-project:jrebuild-test-(api|impl|optional|project):0.0.1]
-                            `- 💣? failed:♢ git:https://github.com/l2x6/jrebuild-test-transitive[.git]#failed-for-version-0.0.1@null: No such TAG 0.0.1 in ♢ git:https://github.com/l2x6/jrebuild-test-transitive[.git] [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
+                            ✅♢ git:https://github.com/l2x6/jrebuild-test.git#0.0.1@deadbeef [org.l2x6.jrebuild.test-project:jrebuild-test-(api|impl|optional|project):0.0.1]
+                            `- 💣? failed:♢ git:https://github.com/l2x6/jrebuild-test-transitive.git#failed-for-version-0.0.1@null: No such TAG 0.0.1 in ♢ git:https://github.com/l2x6/jrebuild-test-transitive.git [org.l2x6.jrebuild.test-transitive:jrebuild-test-transitive:0.0.1:jar]
                             """);
         }
     }

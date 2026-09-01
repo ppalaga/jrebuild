@@ -37,7 +37,9 @@ import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.Result;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.api.util.JrebuildUtils;
+import org.l2x6.jrebuild.common.io.IoUtils;
 
 public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
     private static final Logger log = Logger.getLogger(GitRemoteScmLookup.class);
@@ -198,8 +200,9 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
                         }
                         int colonPos = entry[1].indexOf(':');
 
-                        url = new AnnotatedScmRepository(entry[0], entry[1].substring(0, colonPos),
-                                entry[1].substring(colonPos + 1));
+                        url = AnnotatedScmRepository.of(entry[0],
+                                ScmRepositoryType.valueOf(entry[1].substring(0, colonPos)),
+                                IoUtils.removeTrailingSlashes(entry[1].substring(colonPos + 1)));
                         retrievalTime = Instant.parse(entry[2]);
                         val = new LinkedHashMap<>();
                     }
@@ -239,8 +242,8 @@ public class GitRemoteScmLookup implements RemoteScmLookup, AutoCloseable {
     }
 
     @Override
-    public String type() {
-        return "git";
+    public ScmRepositoryType type() {
+        return ScmRepositoryType.git;
     }
 
     @Override

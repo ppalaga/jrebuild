@@ -63,7 +63,7 @@ public class AnalyzeCommand implements Runnable {
             description = """
                     A timestamp in 2025-12-01T10:15:30Z format determining how fresh the entries in the local ls-remotes-cache must be.
                     You should typically set this to the release date of the root artifacts you are analyzing.
-                    E.g. if you are analyzing artigfacts from a project that was released on 2025-12-01T10:15:30Z,
+                    E.g. if you are analyzing artifacts from a project that was released on 2025-12-01T10:15:30Z,
                     then it is fine to set --ls-remotes-older-than=2025-12-01T10:15:30Z
                     because it should be fine to assume that all its dependencies were tagged before that date.
                     If not specified, then it is set to first the execution time on the given day.

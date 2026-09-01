@@ -15,6 +15,7 @@ import org.jboss.logging.Logger;
 import org.l2x6.jrebuild.api.scm.FqScmRef.AnnotatedFqScmRef;
 import org.l2x6.jrebuild.api.scm.RemoteScmLookup;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.common.git.GitUtils;
 import org.l2x6.jrebuild.common.scm.AbstractScmLocator;
 import org.l2x6.jrebuild.reproducible.central.api.Buildspec;
@@ -46,7 +47,7 @@ public class ReproducibleCentralScmLocator extends AbstractScmLocator {
         for (BuildspecRepository repo : buildspecRepositories) {
             Buildspec recipe = repo.lookup(gav);
             if (recipe != null) {
-                AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, "git", recipe.gitRepo());
+                AnnotatedScmRepository uri = new AnnotatedScmRepository(SOURCE, ScmRepositoryType.git, recipe.gitRepo());
                 try {
                     String tag = recipe.gitTag();
                     AnnotatedFqScmRef ref = validateTag(uri, tag, gav.getVersion());

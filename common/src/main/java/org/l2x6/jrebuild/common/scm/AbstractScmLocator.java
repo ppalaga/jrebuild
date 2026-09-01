@@ -21,8 +21,6 @@ import org.l2x6.pom.tuner.model.Gav;
 public abstract class AbstractScmLocator implements ScmLocator {
 
     private static final Pattern SHA_PATTERN = Pattern.compile("[0-9a-f]{40,}");
-    private static final String HTTPS_GITHUB_COM = "https://github.com/";
-    private static final String SSH_GITHUB_COM = "ssh://git@github.com/";
 
     static final List<BiFunction<AnnotatedScmRepository, Gav, String>> VERSION_TO_TAG_FORMATTERS = List.of(
             (repo, gav) -> gav.getVersion(),
@@ -82,40 +80,6 @@ public abstract class AbstractScmLocator implements ScmLocator {
 
     protected boolean isSha1(String revision) {
         return revision != null && SHA_PATTERN.matcher(revision).matches();
-    }
-
-    protected static String normalizeScmUri(String s) {
-        if (s.startsWith(SSH_GITHUB_COM)) {
-            s = HTTPS_GITHUB_COM + s.substring(SSH_GITHUB_COM.length());
-        }
-
-        s = s.replace("scm:", "");
-        s = s.replace("git:", "");
-        s = s.replace("git@", "");
-        s = s.replace("ssh:", "");
-        s = s.replace("svn:", "");
-        // s = s.replace(".git", "");
-        if (s.startsWith("http://")) {
-            s = s.replace("http://", "https://");
-        } else if (!s.startsWith("https://")) {
-            s = s.replace(':', '/');
-            if (s.startsWith("github.com:")) {
-                s = s.replace(':', '/');
-            }
-            if (s.startsWith("//")) {
-                s = "https:" + s;
-            } else {
-                s = "https://" + s;
-            }
-        }
-        if (s.startsWith(HTTPS_GITHUB_COM)) {
-            var tmp = s.substring(HTTPS_GITHUB_COM.length());
-            final String[] parts = tmp.split("/");
-            if (parts.length > 2) {
-                s = HTTPS_GITHUB_COM + parts[0] + "/" + parts[1];
-            }
-        }
-        return s;
     }
 
 }

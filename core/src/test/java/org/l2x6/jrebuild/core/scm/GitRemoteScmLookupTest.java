@@ -16,6 +16,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.l2x6.jrebuild.api.scm.ScmRef.Kind;
 import org.l2x6.jrebuild.api.scm.ScmRepository.AnnotatedScmRepository;
+import org.l2x6.jrebuild.api.scm.ScmRepository.ScmRepositoryType;
 import org.l2x6.jrebuild.core.scm.GitRemoteScmLookup.UrlEntry;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -125,6 +126,6 @@ public class GitRemoteScmLookupTest {
     }
 
     static AnnotatedScmRepository scmRepo(String uri) {
-        return new AnnotatedScmRepository(SOURCE, "git", uri);
+        return new AnnotatedScmRepository(SOURCE, ScmRepositoryType.git, uri);
     }
 }

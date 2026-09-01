@@ -107,8 +107,6 @@ public interface ScmRepository {
     record AnnotatedScmRepository(
             String source,
             ScmRepository repository) implements Comparable<ScmRepository.AnnotatedScmRepository>, ScmRepository {
-        public static String UNKNOWN = "unknown";
-        public static String FAILED = "failed";
         private static final Comparator<ScmRepository.AnnotatedScmRepository> COMPARATOR = Comparator
                 .comparing(ScmRepository.AnnotatedScmRepository::uri)
                 .thenComparing(ScmRepository.AnnotatedScmRepository::type)
@@ -119,26 +117,33 @@ public interface ScmRepository {
             if (parts.length != 3) {
                 throw new IllegalStateException("Two spaces expected in '" + asString + "'");
             }
-            return new ScmRepository.AnnotatedScmRepository(parts[0], parts[1], parts[2]);
+            return of(parts[0], ScmRepositoryType.valueOf(parts[1]), parts[2]);
         }
 
         public static ScmRepository.AnnotatedScmRepository createUnknown(Gav gav) {
-            return new ScmRepository.AnnotatedScmRepository("?", UNKNOWN, gav.getGroupId());
+            return of("?", ScmRepositoryType.unknown, gav.getGroupId());
         }
 
         public static ScmRepository.AnnotatedScmRepository createFailed(
                 Collection<ScmRepository.AnnotatedScmRepository> failedRepositories) {
 
-            return new ScmRepository.AnnotatedScmRepository(
+            return of(
                     "?",
-                    FAILED,
+                    ScmRepositoryType.failed,
                     new Ebnfizer().add(failedRepositories.stream().map(ScmRepository.AnnotatedScmRepository::toString))
                             .toString());
         }
 
+        public static AnnotatedScmRepository of(
+                String source,
+                ScmRepositoryType type,
+                String uri) {
+            return new AnnotatedScmRepository(source, type, uri);
+        }
+
         public AnnotatedScmRepository(
                 String source,
-                String type,
+                ScmRepositoryType type,
                 String uri) {
             this(Objects.requireNonNull(source, "source"), new ScmRepositoryRecord(type, uri));
         }
